@@ -1,0 +1,412 @@
+---
+title: Parakeet Models
+description: Fast, lightweight transcription with NVIDIA's Parakeet TDT model
+---
+
+## Overview
+
+Parakeet TDT (Transducer) is NVIDIA's fast transcription model optimized for real-time performance. It provides excellent speed with competitive accuracy, making it ideal for live transcription and resource-constrained systems.
+
+<Note>
+Parakeet models are **experimental** in Meetily. They offer 2-3x faster processing than Whisper but with slightly lower accuracy for some accents and technical terms.
+</Note>
+
+## Why Parakeet?
+
+### Advantages
+
+- **Real-Time Performance**: Processes audio faster than real-time on most hardware
+- **Lower Resource Usage**: Uses less RAM and CPU than large Whisper models
+- **ONNX Runtime**: Optimized inference engine for cross-platform performance
+- **Streaming Support**: Better suited for live transcription
+
+### Trade-offs
+
+- **English Only**: Currently only supports English transcription
+- **Lower Accuracy**: ~3-5% lower accuracy than Whisper large models
+- **Technical Terms**: May struggle with specialized vocabulary
+- **No Translation**: Cannot translate other languages to English
+
+## Available Models
+
+Parakeet models use quantization for optimal performance:
+
+| Model | Size | Quantization | Speed | Best For |
+|-------|------|--------------|-------|---------|
+| `parakeet-tdt-0.6b-v3-int8` | 670 MB | Int8 | Ultra Fast | **Recommended** - Real-time transcription |
+| `parakeet-tdt-0.6b-v2-int8` | 661 MB | Int8 | Fast | Previous version, stable |
+
+<Note>
+The default Parakeet model is `parakeet-tdt-0.6b-v3-int8` (latest version with int8 quantization).
+</Note>
+
+## Model Architecture
+
+Parakeet TDT uses a transducer architecture with three components:
+
+### Model Components
+
+1. **Encoder** (`encoder-model.int8.onnx` - 652 MB)
+   - Processes audio features
+   - Converts audio to intermediate representation
+   - Main computational component
+
+2. **Decoder-Joint** (`decoder_joint-model.int8.onnx` - 18 MB)
+   - Generates text predictions
+   - Combines encoder output with language model
+   - Handles token generation
+
+3. **Preprocessor** (`nemo128.onnx` - 140 KB)
+   - Audio feature extraction
+   - Converts raw audio to mel spectrograms
+   - Optimized for 16kHz input
+
+4. **Vocabulary** (`vocab.txt` - 94 KB)
+   - Token-to-text mapping
+   - 1024 BPE tokens
+   - English-optimized
+
+<Note>
+All four components must be present for the model to load. Meetily validates each file during model discovery.
+</Note>
+
+## Quantization
+
+### Int8 Quantization
+
+Parakeet models use 8-bit integer quantization:
+
+**Benefits:**
+- 3-4x smaller than FP32 (full precision)
+- 2-3x faster inference
+- Lower memory bandwidth usage
+- Minimal accuracy loss (less than 2%)
+
+**How it Works:**
+```
+FP32 weights (32-bit floats) → Int8 (8-bit integers)
+Model size: 2.6 GB → 670 MB
+Speed improvement: ~3x on CPU, ~2x on GPU
+```
+
+### FP32 Models (Not Included)
+
+Full precision models are available but not recommended:
+- **Size**: 2.6 GB total
+- **Speed**: Slower than int8
+- **Accuracy**: Less than 2% better than int8
+- **Use case**: Research or maximum accuracy needs
+
+<Warning>
+Meetily only includes int8-quantized Parakeet models. FP32 models are not distributed due to size constraints.
+</Warning>
+
+## Performance Comparison
+
+### Speed Benchmarks
+
+Processing time for a 30-minute meeting:
+
+**Parakeet vs Whisper** (with GPU acceleration):
+
+| Model | Processing Time | Real-Time Factor |
+|-------|----------------|------------------|
+| Parakeet TDT v3 (int8) | 3-5 minutes | 6-10x real-time |
+| Whisper large-v3-turbo | 12-18 minutes | 1.5-2.5x real-time |
+| Whisper small | 5-8 minutes | 3-5x real-time |
+
+**CPU Only** (8-core processor):
+
+| Model | Processing Time | Real-Time Factor |
+|-------|----------------|------------------|
+| Parakeet TDT v3 (int8) | 10-15 minutes | 2-3x real-time |
+| Whisper large-v3-turbo | 90-120 minutes | 0.25-0.33x real-time |
+| Whisper small | 30-45 minutes | 0.6-1x real-time |
+
+<Note>
+Parakeet achieves **real-time transcription** on most modern hardware, even without GPU acceleration.
+</Note>
+
+### Accuracy Comparison
+
+Word Error Rate (WER) on LibriSpeech test-clean:
+
+```
+Whisper large-v3:     ~3% WER  (97% accuracy)
+Parakeet TDT v3:      ~5% WER  (95% accuracy)
+Whisper medium:       ~4% WER  (96% accuracy)
+Whisper small:        ~6% WER  (94% accuracy)
+```
+
+**Parakeet is most accurate for:**
+- Clear speech with minimal background noise
+- Standard American/British English accents
+- Conversational language (not technical jargon)
+
+**Whisper is more accurate for:**
+- Noisy environments
+- Multiple accents and dialects
+- Technical terminology
+- Non-English languages
+
+## When to Use Parakeet
+
+### Ideal Use Cases
+
+<AccordionGroup>
+  <Accordion title="Live Transcription">
+    **Best Choice**: Parakeet TDT v3
+    
+    Real-time processing with minimal lag. Transcribes as people speak, ideal for live captions or note-taking.
+    
+    - Processing: Greater than 1x real-time (faster than speech)
+    - Latency: Less than 1 second
+    - Quality: Good for clean audio
+  </Accordion>
+
+  <Accordion title="High-Volume Processing">
+    **Best Choice**: Parakeet TDT v3
+    
+    Process dozens of meetings quickly. Parakeet's speed advantage compounds when processing multiple files.
+    
+    - 30 meetings/hour vs 5-10 with Whisper large
+    - Lower compute costs
+    - Good for batch processing
+  </Accordion>
+
+  <Accordion title="Resource-Constrained Devices">
+    **Best Choice**: Parakeet TDT v3
+    
+    Runs efficiently on laptops, embedded systems, or cloud instances with limited resources.
+    
+    - RAM: 2-4 GB (vs 6-8 GB for Whisper large)
+    - CPU: 4 cores sufficient
+    - GPU: Optional (still fast on CPU)
+  </Accordion>
+
+  <Accordion title="English-Only Meetings">
+    **Best Choice**: Parakeet TDT v3
+    
+    If all your meetings are in English, Parakeet's speed advantage outweighs Whisper's multilingual support.
+    
+    - 3x faster than Whisper
+    - Accuracy comparable to Whisper small/medium
+    - No language detection overhead
+  </Accordion>
+</AccordionGroup>
+
+### When to Use Whisper Instead
+
+- **Multilingual content**: Parakeet only supports English
+- **Maximum accuracy needed**: Legal, medical, or compliance scenarios
+- **Heavy accents**: Whisper handles accents better
+- **Technical/specialized content**: Whisper has broader vocabulary
+- **Noisy audio**: Whisper's noise robustness is superior
+
+## Downloading and Setup
+
+### Automatic Download
+
+Parakeet models are downloaded automatically:
+
+1. Go to **Settings** > **Transcription**
+2. Select **Parakeet** as transcription engine
+3. Choose `parakeet-tdt-0.6b-v3-int8` from dropdown
+4. Click **Download Model**
+5. Wait for download (670 MB, ~5-10 minutes on typical connection)
+6. Click **Load Model** to activate
+
+### Download Details
+
+**Source**: Custom Meetily CDN (hosted ONNX exports)
+- **v3 models**: `meetily.towardsgeneralintelligence.com/models/`
+- **v2 models**: HuggingFace (`istupakov/parakeet-tdt-0.6b-v2-onnx`)
+
+**Storage Location**:
+- **macOS**: `~/Library/Application Support/Meetily/models/parakeet/`
+- **Windows**: `%APPDATA%\Meetily\models\parakeet\`
+- **Linux**: `~/.local/share/Meetily/models/parakeet/`
+
+### Resume Support
+
+Parakeet downloads support resume on network interruption:
+
+- Progress tracked per file (4 files total)
+- Partial downloads preserved
+- Automatic retry with HTTP Range requests
+- Speed and progress displayed in MB
+
+<Note>
+If download fails, Meetily automatically retries from the last checkpoint. You can safely cancel and resume later.
+</Note>
+
+## Model Validation
+
+Meetily validates Parakeet models on load:
+
+### File Integrity Checks
+
+1. **File Existence**: All 4 files must be present
+2. **File Size**: Minimum size thresholds (90% of expected)
+3. **ONNX Format**: Valid ONNX model headers
+4. **Vocabulary**: Valid UTF-8 text file
+
+### Corruption Detection
+
+If validation fails:
+- Status changes to `Corrupted`
+- UI displays "Model corrupted" error
+- Action: Delete and re-download
+
+```rust
+// Minimum file sizes for validation (in bytes)
+encoder-model.int8.onnx:     580 MB
+decoder_joint-model.int8.onnx: 8 MB
+nemo128.onnx:                100 KB
+vocab.txt:                   5 KB
+```
+
+<Warning>
+Do not manually edit model files. Corruption will prevent loading and require re-download.
+</Warning>
+
+## Runtime Performance
+
+### ONNX Runtime Optimization
+
+Parakeet uses ONNX Runtime with optimizations:
+
+- **Graph Optimization**: Fused operations for faster inference
+- **Execution Providers**: Auto-selects best backend
+  - CPU: OpenMP parallel execution
+  - GPU: CUDA (NVIDIA), TensorRT, DirectML (Windows)
+  - Apple: CoreML acceleration on Metal
+- **Memory Management**: Efficient tensor allocation
+
+### Threading Configuration
+
+ONNX Runtime threads are auto-configured:
+
+```rust
+// Adaptive thread count based on CPU cores
+Low-end (2-4 cores):  2 threads
+Mid-range (6-8 cores): 4 threads  
+High-end (10+ cores):  6-8 threads
+```
+
+### Memory Usage
+
+**Peak Memory** (during transcription):
+- **Model loading**: ~700 MB
+- **Inference buffers**: ~200 MB
+- **Audio processing**: ~100 MB
+- **Total**: ~1 GB peak
+
+<Note>
+Parakeet uses significantly less memory than Whisper large models (1 GB vs 4-6 GB).
+</Note>
+
+## Limitations and Workarounds
+
+### English-Only Limitation
+
+**Problem**: Parakeet only transcribes English.
+
+**Workaround**:
+- Use Whisper for multilingual meetings
+- Meetily supports switching engines per meeting
+- Consider hybrid approach: Parakeet for English, Whisper for others
+
+### No Confidence Scores
+
+**Problem**: Parakeet doesn't provide per-word confidence.
+
+**Impact**:
+- Cannot highlight uncertain words in UI
+- No automatic quality flagging
+
+**Workaround**: Review transcripts manually for critical content
+
+### Limited Punctuation
+
+**Problem**: Parakeet's punctuation is less sophisticated than Whisper.
+
+**Workaround**:
+- Post-process with LLM for better formatting
+- Use Whisper for formal documentation needs
+
+### Technical Vocabulary
+
+**Problem**: May struggle with domain-specific terms.
+
+**Workaround**:
+- Use Whisper for technical/specialized meetings
+- Consider custom vocabulary (future feature)
+- Post-edit transcripts for critical terms
+
+## Troubleshooting
+
+### Model Won't Load
+
+**Symptom**: "Failed to load Parakeet model" error
+
+**Solutions**:
+1. Check all 4 files exist in model directory
+2. Verify file sizes match expected values
+3. Delete corrupted files and re-download
+4. Check ONNX Runtime installation (auto-included)
+5. Review logs for specific errors
+
+### Slow Performance
+
+**Symptom**: Parakeet slower than expected
+
+**Solutions**:
+1. Ensure int8 model loaded (not FP32)
+2. Close other applications
+3. Check CPU usage in Task Manager
+4. Verify ONNX Runtime using optimal provider
+5. Update graphics drivers (for GPU acceleration)
+
+### Poor Accuracy
+
+**Symptom**: Many transcription errors
+
+**Solutions**:
+1. Switch to Whisper for better accuracy
+2. Improve audio quality (microphone settings)
+3. Reduce background noise
+4. Use Parakeet v3 (latest version)
+5. Check if content is in English
+
+### Out of Memory
+
+**Symptom**: "Out of memory" error during transcription
+
+**Solutions**:
+1. Close other applications
+2. Use smaller audio chunks
+3. Increase system RAM (if possible)
+4. Switch to Whisper tiny/base (even smaller)
+
+## Version History
+
+### v3 (Current)
+
+- **Release**: 2024
+- **Improvements**: Better accuracy, updated vocabulary
+- **Size**: 670 MB (int8)
+- **Status**: Recommended
+
+### v2
+
+- **Release**: 2023
+- **Size**: 661 MB (int8)
+- **Status**: Stable, legacy support
+- **Note**: Slightly lower accuracy than v3
+
+## See Also
+
+- [Whisper Models](/configuration/whisper-models) - OpenAI's Whisper for maximum accuracy
+- [GPU Acceleration](/configuration/gpu-acceleration) - Enable GPU support for faster processing
+- [Transcription Engine Selection](/configuration/whisper-models) - Compare Whisper vs Parakeet

@@ -1,0 +1,557 @@
+---
+title: Data Storage
+description: Complete guide to where and how Meetily stores your data locally
+---
+
+## Storage Philosophy
+
+Meetily stores all data **locally on your device** using standard, accessible formats. This ensures:
+
+- **Full ownership**: You control your data
+- **No vendor lock-in**: Export and migrate data easily
+- **Privacy**: Data never leaves your device (except explicit LLM choices)
+- **Portability**: Standard formats (SQLite, JSON, WAV/MP3)
+
+## Storage Locations by Platform
+
+### macOS
+
+**Application Data Directory**:
+```bash
+~/Library/Application Support/Meetily/
+```
+
+**Key Files**:
+```
+~/Library/Application Support/Meetily/
+├── meeting_minutes.sqlite      # Main database
+├── meeting_minutes.sqlite-wal  # Write-ahead log (temporary)
+├── meeting_minutes.sqlite-shm  # Shared memory (temporary)
+├── models/                      # Transcription models
+│   ├── ggml-large-v3-turbo.bin # Whisper model
+│   └── ggml-base.bin           # Smaller Whisper model
+└── analytics.json              # Analytics preferences (if enabled)
+```
+
+**Meeting Recordings** (default):
+```bash
+~/Downloads/
+├── TeamStandup_2024-03-13_14-30/
+├── ClientCall_2024-03-14_10-00/
+└── ProjectSync_2024-03-15_15-45/
+```
+
+**Backend Data** (if using FastAPI backend):
+```bash
+~/Library/Application Support/Meetily/
+└── meeting_minutes.db          # Legacy backend database
+```
+
+### Windows
+
+**Application Data Directory**:
+```powershell
+%APPDATA%\Meetily\
+# Typically: C:\Users\<YourName>\AppData\Roaming\Meetily\
+```
+
+**Key Files**:
+```
+%APPDATA%\Meetily\
+├── meeting_minutes.sqlite      # Main database
+├── meeting_minutes.sqlite-wal  # Write-ahead log (temporary)
+├── meeting_minutes.sqlite-shm  # Shared memory (temporary)
+├── models\                      # Transcription models
+│   ├── ggml-large-v3-turbo.bin
+│   └── ggml-base.bin
+└── analytics.json              # Analytics preferences (if enabled)
+```
+
+**Meeting Recordings** (default):
+```powershell
+%USERPROFILE%\Downloads\
+# Typically: C:\Users\<YourName>\Downloads\
+```
+
+### Linux
+
+**Application Data Directory**:
+```bash
+~/.local/share/Meetily/
+```
+
+**Key Files**:
+```
+~/.local/share/Meetily/
+├── meeting_minutes.sqlite      # Main database
+├── meeting_minutes.sqlite-wal  # Write-ahead log (temporary)
+├── meeting_minutes.sqlite-shm  # Shared memory (temporary)
+├── models/                      # Transcription models
+│   ├── ggml-large-v3-turbo.bin
+│   └── ggml-base.bin
+└── analytics.json              # Analytics preferences (if enabled)
+```
+
+**Meeting Recordings** (default):
+```bash
+~/Downloads/
+```
+
+## Data Directory Structure
+
+### Meeting Folder Structure
+
+Each meeting creates a timestamped folder:
+
+```
+MeetingName_YYYY-MM-DD_HH-MM/
+├── audio.wav              # Full recording (48kHz, stereo)
+├── metadata.json          # Meeting metadata
+└── transcripts.json       # Timestamped transcripts
+```
+
+**Example**:
+```
+TeamStandup_2024-03-13_14-30/
+├── audio.wav              # 125 MB (30 min recording)
+├── metadata.json          # 1 KB
+└── transcripts.json       # 45 KB (transcript data)
+```
+
+### Database Schema
+
+The SQLite database stores structured meeting metadata:
+
+**Tables**:
+
+1. **meetings**: Meeting metadata
+2. **transcripts**: Timestamped transcript segments
+3. **summary_processes**: Summary generation status
+4. **settings**: Application configuration
+
+**Database Size**: Typically 1-10 MB depending on number of meetings
+
+**Code Location**: `backend/app/db.py:51-100`
+
+## File Formats
+
+### Audio Files
+
+**Default Format**: WAV (uncompressed)
+- **Sample Rate**: 48,000 Hz
+- **Bit Depth**: 16-bit
+- **Channels**: Stereo (mic + system audio mixed)
+- **Size**: ~10 MB per minute
+
+**Optional Format**: MP3 (compressed)
+- **Bit Rate**: 128 kbps (configurable)
+- **Size**: ~1 MB per minute
+
+**Location**: User's Downloads folder (configurable)
+
+### Metadata Format
+
+**metadata.json** structure:
+
+```json
+{
+  "version": "1.0",
+  "meeting_id": "550e8400-e29b-41d4-a716-446655440000",
+  "meeting_name": "Team Standup",
+  "created_at": "2024-03-13T14:30:00Z",
+  "completed_at": "2024-03-13T15:00:00Z",
+  "duration_seconds": 1800,
+  "devices": {
+    "microphone": "Built-in Microphone",
+    "system_audio": "BlackHole 2ch"
+  },
+  "audio_file": "audio.wav",
+  "transcript_file": "transcripts.json",
+  "sample_rate": 48000,
+  "status": "completed"
+}
+```
+
+**Code Location**: `frontend/src-tauri/src/audio/recording_saver.rs:27-41`
+
+### Transcript Format
+
+**transcripts.json** structure:
+
+```json
+[
+  {
+    "id": "transcript-001",
+    "text": "Let's start the standup.",
+    "audio_start_time": 0.0,
+    "audio_end_time": 2.5,
+    "duration": 2.5,
+    "display_time": "[00:00]",
+    "confidence": 0.95,
+    "sequence_id": 1
+  },
+  {
+    "id": "transcript-002",
+    "text": "I finished the authentication feature.",
+    "audio_start_time": 2.5,
+    "audio_end_time": 5.8,
+    "duration": 3.3,
+    "display_time": "[00:02]",
+    "confidence": 0.92,
+    "sequence_id": 2
+  }
+]
+```
+
+**Code Location**: `frontend/src-tauri/src/audio/recording_saver.rs:14-25`
+
+### Database Format
+
+**meeting_minutes.sqlite** structure:
+
+```sql
+-- Meetings table
+CREATE TABLE meetings (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    folder_path TEXT  -- Path to meeting folder
+);
+
+-- Transcripts table
+CREATE TABLE transcripts (
+    id TEXT PRIMARY KEY,
+    meeting_id TEXT NOT NULL,
+    transcript TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    summary TEXT,
+    action_items TEXT,
+    key_points TEXT,
+    audio_start_time REAL,
+    audio_end_time REAL,
+    duration REAL,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+
+-- Settings table
+CREATE TABLE settings (
+    id INTEGER PRIMARY KEY,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    whisper_model TEXT NOT NULL,
+    api_key TEXT
+);
+
+-- Summary processes table
+CREATE TABLE summary_processes (
+    id TEXT PRIMARY KEY,
+    meeting_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    progress INTEGER,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+**Code Location**: `backend/app/db.py:48-140`
+
+## Storage Management
+
+### Accessing Your Data
+
+**Via UI**:
+1. Open Meetily
+2. Click on a meeting in the sidebar
+3. Use "Export" or "Open Folder" buttons
+
+**Via File System**:
+1. Navigate to application data directory (see platform locations above)
+2. Browse meeting folders in Downloads
+3. Open database with any SQLite browser
+
+**Via Terminal/Command Line**:
+
+```bash
+# macOS/Linux - Open application data directory
+open ~/Library/Application\ Support/Meetily/
+
+# Windows - Open application data directory
+explorer %APPDATA%\Meetily
+
+# macOS/Linux - Query database
+sqlite3 ~/Library/Application\ Support/Meetily/meeting_minutes.sqlite \
+  "SELECT title, created_at FROM meetings ORDER BY created_at DESC;"
+```
+
+### Opening Data Folder from App
+
+Meetily provides a command to open the data directory:
+
+```typescript
+// Open database folder from UI
+import { invoke } from '@tauri-apps/api/core';
+
+await invoke('open_database_folder');
+```
+
+**Code Location**: `frontend/src-tauri/src/database/commands.rs`
+
+### Changing Storage Locations
+
+**Meeting Recording Location**:
+
+By default, meetings are saved to Downloads. To change:
+
+1. The recording location is currently set to system Downloads
+2. Custom paths can be implemented by modifying the save path in the recording service
+
+**Code Location**: `frontend/src-tauri/src/audio/recording_saver.rs`
+
+**Models Directory**:
+
+Models are stored in the application data directory. This location is determined at runtime:
+
+```rust
+// Models directory initialization
+let app_data_dir = app.path().app_data_dir()?;
+let models_dir = app_data_dir.join("models");
+```
+
+**Code Location**: `frontend/src-tauri/src/whisper_engine/commands.rs:16-19`
+
+## Data Retention
+
+### Automatic Cleanup
+
+Meetily does **not** automatically delete any meeting data. All data persists until you manually delete it.
+
+### Manual Deletion
+
+**Delete Individual Meetings**:
+1. Select meeting in sidebar
+2. Click delete button
+3. Confirms deletion of:
+   - Database entries
+   - Meeting folder and all files
+   - Audio recordings
+   - Transcripts
+
+**Delete All Data** (complete uninstall):
+1. Uninstall Meetily application
+2. Manually delete application data directory:
+   - macOS: `rm -rf ~/Library/Application\ Support/Meetily`
+   - Windows: `rmdir /s %APPDATA%\Meetily`
+   - Linux: `rm -rf ~/.local/share/Meetily`
+3. Delete meeting folders from Downloads (if desired)
+
+### Temporary Files
+
+**SQLite Write-Ahead Log (WAL)**:
+- **Files**: `meeting_minutes.sqlite-wal`, `meeting_minutes.sqlite-shm`
+- **Purpose**: Performance optimization for database writes
+- **Cleanup**: Automatically removed on app shutdown
+- **Privacy**: Contains same data as main database (local only)
+
+**Code Location**: `frontend/src-tauri/src/database/manager.rs:189-207`
+
+## Data Export
+
+### Export Formats
+
+**Transcripts**:
+- **Plain Text**: Copy from UI
+- **JSON**: Available in `transcripts.json`
+- **Database**: Query SQLite directly
+
+**Audio**:
+- **WAV**: Uncompressed, full quality
+- **MP3**: Compressed (if configured)
+
+**Database**:
+- **SQLite**: Standard format, compatible with any SQLite browser
+- **SQL Export**: Use `sqlite3 .dump` command
+
+### Export Examples
+
+**Export Transcript to Text File**:
+```bash
+# macOS/Linux
+sqlite3 ~/Library/Application\ Support/Meetily/meeting_minutes.sqlite \
+  "SELECT transcript FROM transcripts WHERE meeting_id='YOUR_MEETING_ID';" \
+  > meeting_transcript.txt
+```
+
+**Export All Meetings Metadata**:
+```bash
+sqlite3 ~/Library/Application\ Support/Meetily/meeting_minutes.sqlite \
+  "SELECT * FROM meetings;" \
+  -csv -header > meetings_export.csv
+```
+
+**Backup Entire Database**:
+```bash
+# Simple copy
+cp ~/Library/Application\ Support/Meetily/meeting_minutes.sqlite \
+   ~/Backups/meetily_backup_$(date +%Y%m%d).sqlite
+
+# SQL dump for portability
+sqlite3 ~/Library/Application\ Support/Meetily/meeting_minutes.sqlite \
+  .dump > meetily_backup.sql
+```
+
+## Storage Requirements
+
+### Disk Space Estimates
+
+**Per Meeting**:
+- **Audio (WAV)**: ~10 MB per minute
+- **Audio (MP3)**: ~1 MB per minute
+- **Transcripts**: ~50-100 KB per hour
+- **Metadata**: ~1 KB
+- **Database Entry**: ~5 KB
+
+**Example** (1 hour meeting):
+- Audio (WAV): 600 MB
+- Audio (MP3): 60 MB
+- Transcripts: 75 KB
+- Metadata: 1 KB
+- **Total (WAV)**: ~600 MB
+- **Total (MP3)**: ~60 MB
+
+**Application Data**:
+- **Whisper Models**: 74 MB to 3 GB (depending on model)
+- **Database**: 1-10 MB (scales with number of meetings)
+- **Application**: ~50 MB
+
+### Recommended Storage
+
+- **Minimal**: 5 GB (small model, MP3 recordings)
+- **Recommended**: 20 GB (large model, WAV recordings)
+- **Heavy Use**: 50+ GB (multiple large models, many meetings)
+
+## Data Security
+
+### File System Protection
+
+Data is protected by standard OS file system permissions:
+
+**macOS**:
+- Application Support folder: User-only access
+- Downloads folder: User-configurable permissions
+
+**Windows**:
+- AppData\Roaming: User-only access by default
+- Downloads: User-configurable permissions
+
+**Linux**:
+- ~/.local/share: User-only access (chmod 700)
+- Downloads: User-configurable permissions
+
+### No Encryption at Rest
+
+Meetily does **not** currently provide built-in encryption at rest. Your data security relies on:
+
+1. **OS-Level Encryption**:
+   - macOS: FileVault
+   - Windows: BitLocker
+   - Linux: LUKS, dm-crypt
+
+2. **File System Permissions**: Standard user-only access
+
+3. **Physical Security**: Lock your device
+
+**For Maximum Security**: Enable full-disk encryption on your OS.
+
+### Database Connection Security
+
+SQLite database uses WAL (Write-Ahead Logging) mode:
+
+- **Crash Recovery**: Prevents data loss on unexpected shutdown
+- **Performance**: Faster writes, better concurrency
+- **Cleanup**: WAL files removed on graceful shutdown
+
+**Code Location**: `frontend/src-tauri/src/database/manager.rs:189-207`
+
+## Troubleshooting
+
+### Finding Your Data
+
+**Can't find application data?**
+
+```bash
+# macOS - List all Meetily data
+find ~/Library/Application\ Support/Meetily -type f
+
+# Windows - List all Meetily data
+dir /s %APPDATA%\Meetily
+
+# Linux - List all Meetily data
+find ~/.local/share/Meetily -type f
+```
+
+**Can't find meeting recordings?**
+
+1. Check Downloads folder (default location)
+2. Search for meeting name: `MeetingName_*`
+3. Check database for folder path:
+
+```sql
+SELECT title, folder_path FROM meetings;
+```
+
+### Recovering Data
+
+**Database Corruption**:
+
+Meetily includes automatic WAL recovery:
+
+```rust
+// Automatic recovery on startup
+if error.contains("malformed") || error.contains("corrupt") {
+    // Delete orphaned WAL files
+    fs::remove_file(&wal_path)?;
+    fs::remove_file(&shm_path)?;
+    // Retry connection
+}
+```
+
+**Code Location**: `frontend/src-tauri/src/database/manager.rs:79-116`
+
+**Manual Recovery**:
+
+```bash
+# Backup current database
+cp meeting_minutes.sqlite meeting_minutes.sqlite.backup
+
+# Attempt SQLite recovery
+sqlite3 meeting_minutes.sqlite ".recover" | sqlite3 recovered.sqlite
+
+# Verify recovered database
+sqlite3 recovered.sqlite "PRAGMA integrity_check;"
+```
+
+### Migration and Backup
+
+**Backup Strategy**:
+
+1. **Database**: Copy `meeting_minutes.sqlite`
+2. **Meetings**: Copy all meeting folders from Downloads
+3. **Models**: Optional - copy `models/` directory (can re-download)
+4. **Settings**: Copy `analytics.json` (if using analytics)
+
+**Restore**:
+
+1. Install Meetily on new system
+2. Close Meetily
+3. Copy backed-up files to application data directory
+4. Copy meeting folders to Downloads (or new location)
+5. Restart Meetily
+
+## Related Documentation
+
+- [Privacy Guarantees](/configuration/privacy)
+- [Local Processing Architecture](/configuration/local-processing)
+- [Export and Backup](/features/export-options)

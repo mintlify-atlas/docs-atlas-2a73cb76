@@ -1,97 +1,198 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Privacy-First AI Meeting Assistant"
+description: "Capture, transcribe, and summarize meetings entirely on your local infrastructure with 100% data sovereignty"
 ---
 
-## Setting up
+<div className="mb-12">
+  <div className="text-center mb-8">
+    <h1 className="text-5xl font-bold mb-4" style={{ color: '#773cc7' }}>
+      Your Meetings, Your Data, Your Control
+    </h1>
+    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+      Meetily is an open-source AI meeting assistant that runs entirely on your local machine. 
+      Real-time transcription with Whisper and Parakeet, AI-powered summaries with Ollama, and 
+      professional audio mixing—all without sending data to the cloud.
+    </p>
+  </div>
 
-Get your documentation site up and running in minutes.
+  <CardGroup cols={3}>
+    <Card title="100% Local" icon="shield-check" color="#773cc7">
+      All processing happens on your device. No data ever leaves your computer.
+    </Card>
+    <Card title="4x Faster Transcription" icon="bolt" color="#773cc7">
+      GPU-accelerated Parakeet and Whisper models with Metal, CUDA, and Vulkan support.
+    </Card>
+    <Card title="Open Source" icon="code-branch" color="#773cc7">
+      MIT licensed. Self-host, modify, and customize for your needs.
+    </Card>
+  </CardGroup>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+## Get Started in Minutes
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+<CardGroup cols={2}>
+  <Card 
+    title="Install Meetily" 
+    icon="download" 
+    href="/installation/macos"
   >
-    Edit your docs locally and preview them in real time.
+    Download for macOS, Windows, or Linux and start recording in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
+  <Card 
+    title="First Recording" 
+    icon="microphone" 
+    href="/quickstart/first-recording"
   >
-    Customize the design and colors of your site to match your brand.
+    Quick start guide to capture your first meeting with live transcription
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
+  <Card 
+    title="Configure AI Summaries" 
+    icon="sparkles" 
+    href="/quickstart/ai-setup"
   >
-    Organize your docs to help users find what they need and succeed with your product.
+    Set up Ollama, Claude, or custom AI providers for intelligent summaries
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
+  <Card 
+    title="Audio Setup" 
+    icon="signal" 
+    href="/quickstart/audio-setup"
   >
-    Auto-generate API documentation from OpenAPI specifications.
+    Configure microphone and system audio for professional recordings
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Core Features
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card 
+    title="Real-Time Transcription" 
+    icon="closed-captioning" 
+    href="/features/transcription"
+  >
+    Live transcription with Whisper or Parakeet models, optimized for speed and accuracy
+  </Card>
+  <Card 
+    title="Speaker Diarization" 
+    icon="users" 
+    href="/features/speaker-diarization"
+  >
+    Automatically identify and separate different speakers in your meetings
+  </Card>
+  <Card 
+    title="AI-Powered Summaries" 
+    icon="brain" 
+    href="/features/ai-summaries"
+  >
+    Generate intelligent meeting summaries with local or cloud-based LLMs
+  </Card>
+  <Card 
+    title="Professional Audio Mixing" 
+    icon="sliders" 
+    href="/configuration/audio-mixing"
+  >
+    RMS-based ducking, clipping prevention, and noise suppression
+  </Card>
+  <Card 
+    title="Import & Enhance" 
+    icon="file-import" 
+    href="/features/import-enhance"
+  >
+    Re-transcribe existing recordings with different models or languages
+  </Card>
+  <Card 
+    title="Multi-Platform" 
+    icon="desktop" 
+    href="/installation/macos"
+  >
+    Native support for macOS, Windows, and Linux with GPU acceleration
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Why Meetily?
 
-## Need inspiration?
+<Note>
+**Privacy-First by Design** — While cloud meeting tools promise convenience, they create significant privacy and compliance risks. Meetily solves this with complete data sovereignty on your infrastructure, zero vendor lock-in, and full control over your sensitive conversations.
+</Note>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="No Cloud Dependencies" icon="cloud-slash">
+    Works 100% offline. No API keys required for core features.
+  </Card>
+  <Card title="Cost-Effective" icon="dollar-sign">
+    Uses open-source AI models instead of expensive cloud APIs.
+  </Card>
+  <Card title="GDPR Compliant" icon="scale-balanced">
+    Built-in privacy architecture for compliance-focused organizations.
+  </Card>
+  <Card title="Enterprise Ready" icon="building">
+    Self-host for teams with complete control over data and infrastructure.
+  </Card>
+</CardGroup>
+
+## Quick Links
+
+<CardGroup cols={3}>
+  <Card 
+    title="Documentation" 
+    icon="book-open" 
+    href="/introduction"
+  >
+    Complete guides and references
+  </Card>
+  <Card 
+    title="API Reference" 
+    icon="code" 
+    href="/api/overview"
+  >
+    Backend API and Tauri commands
+  </Card>
+  <Card 
+    title="GitHub" 
+    icon="github" 
+    href="https://github.com/Zackriya-Solutions/meetily"
+  >
+    View source code and contribute
+  </Card>
+  <Card 
+    title="Discord Community" 
+    icon="discord" 
+    href="https://discord.gg/crRymMQBFH"
+  >
+    Get help and share feedback
+  </Card>
+  <Card 
+    title="Contributing" 
+    icon="handshake" 
+    href="/advanced/contributing"
+  >
+    Help improve Meetily
+  </Card>
+  <Card 
+    title="Building from Source" 
+    icon="hammer" 
+    href="/advanced/building-from-source"
+  >
+    Developer setup and build instructions
+  </Card>
+</CardGroup>
+
+## Trusted by Privacy-Conscious Teams
+
+<Info>
+Meetily is used by defense consultants, enterprise executives, legal professionals, and healthcare providers who need advanced meeting intelligence without compromising on privacy, compliance, or control.
+</Info>
+
+<div className="mt-8 text-center">
+  <p className="text-gray-600">
+    Ready to take control of your meeting data?
+  </p>
+  <div className="mt-4">
+    <a 
+      href="/installation/macos" 
+      className="inline-block px-8 py-3 text-white font-semibold rounded-full transition-all hover:opacity-90"
+      style={{ backgroundColor: '#773cc7', borderRadius: '20px' }}
+    >
+      Get Started Now
+    </a>
+  </div>
+</div>

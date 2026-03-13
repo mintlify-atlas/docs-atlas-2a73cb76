@@ -1,0 +1,244 @@
+---
+title: "Your First Recording"
+description: "Complete guide to capturing your first meeting with live transcription in Meetily"
+---
+
+This guide walks you through recording your first meeting with Meetily, from launch to viewing your AI-generated summary.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+- Installed Meetily on your device ([macOS](/installation/macos) | [Windows](/installation/windows) | [Linux](/installation/linux))
+- A working microphone connected to your computer
+- (Optional) A virtual audio device for system audio capture
+
+<Info>
+**First Launch Tip** — On macOS, you'll be prompted to grant microphone and screen recording permissions. These are required for audio capture.
+</Info>
+
+## Step-by-Step Guide
+
+<Steps>
+  <Step title="Launch Meetily">
+    Open Meetily from your Applications folder (macOS), Start Menu (Windows), or application launcher (Linux).
+
+    The main interface displays:
+    - Recording status in the center
+    - Sidebar with meeting history (left)
+    - Audio level indicators
+    - Settings icon (gear) in the top-right corner
+  </Step>
+
+  <Step title="Configure Transcription Model">
+    On first launch, you'll need to select a transcription model:
+
+    1. Click the **Model Settings** button or the settings gear icon
+    2. Choose your transcription provider:
+       - **⚡ Parakeet** (Recommended) — Real-time, accurate, optimized for speed
+       - **🏠 Local Whisper** — High accuracy, more processing time
+    
+    <Tip>
+    **Parakeet** is recommended for real-time transcription. It's 4x faster than Whisper while maintaining excellent accuracy.
+    </Tip>
+
+    ### Downloading Your First Model
+
+    If using **Parakeet**:
+    - The `parakeet-tdt-0.6b` model will be available for download
+    - Click **Download** and wait for completion (100-200 MB)
+    - The model downloads to your local machine — no cloud required
+
+    If using **Local Whisper**:
+    - Choose from models: `tiny`, `base`, `small`, `medium`, or `large-v3`
+    - **Recommended**: Start with `base` (140 MB) for balanced speed and accuracy
+    - Larger models provide better accuracy but require more processing power
+
+    <Note>
+    Model downloads happen only once. They're stored locally in:
+    - **macOS**: `~/Library/Application Support/Meetily/models/`
+    - **Windows**: `%APPDATA%\Meetily\models\`
+    - **Linux**: `~/.local/share/Meetily/models/`
+    </Note>
+  </Step>
+
+  <Step title="Configure Audio Devices (Optional)">
+    To ensure the best recording quality:
+
+    1. Click the **Audio Settings** button (speaker icon)
+    2. Select your **Microphone** from the dropdown
+       - Choose "Default Microphone" or a specific device
+       - Look for the microphone you want to use
+    3. Select your **System Audio** device (optional)
+       - On macOS: Requires BlackHole or similar virtual audio device
+       - On Windows: WASAPI loopback captures system audio automatically
+
+    <Tip>
+    **Test Your Microphone** — Speak into your microphone and watch the audio level indicator. Green bars indicate good input levels.
+    </Tip>
+
+    [Learn more about audio setup →](/quickstart/audio-setup)
+  </Step>
+
+  <Step title="Start Recording">
+    1. (Optional) Enter a meeting name in the text field
+       - If left blank, Meetily generates a name like "Meeting - Jan 15, 2026"
+    2. Click the large **Start Recording** button
+    3. The button changes to **Stop Recording** with a red indicator
+
+    **What happens when you start:**
+    - Audio begins capturing from your selected devices
+    - Voice Activity Detection (VAD) identifies speech segments
+    - Transcription starts in real-time (visible in the right panel)
+    - Audio is mixed professionally with ducking and clipping prevention
+  </Step>
+
+  <Step title="Monitor Live Transcription">
+    As you speak, transcription appears in real-time on the right side:
+
+    - **Colored dots** indicate transcription confidence:
+      - 🟢 Green: High confidence (80-100%)
+      - 🟡 Yellow: Medium confidence (60-80%)
+      - 🔴 Red: Low confidence (below 60%)
+    - Timestamps show when each segment was spoken
+    - Transcripts update continuously as speech is detected
+
+    <Info>
+    **Real-time Processing** — Parakeet transcribes with minimal delay. Whisper processes in 30-second chunks, so transcription appears every 30 seconds.
+    </Info>
+  </Step>
+
+  <Step title="Stop Recording">
+    When your meeting ends:
+
+    1. Click the **Stop Recording** button
+    2. Meetily processes the final transcripts (takes 5-10 seconds)
+    3. The recording is saved automatically with:
+       - Complete audio file (WAV format)
+       - Full transcript with timestamps
+       - Meeting metadata (date, duration, device info)
+
+    <Warning>
+    **Don't Close Meetily** immediately after stopping. Wait for "Recording saved successfully" confirmation to ensure all data is preserved.
+    </Warning>
+  </Step>
+
+  <Step title="View Your Recording">
+    After stopping, your recording appears in the left sidebar:
+
+    1. Click on the meeting name in the sidebar
+    2. The meeting details page opens showing:
+       - **Full transcript** with timestamps
+       - **Audio playback** controls
+       - **Export options** (copy, download)
+       - **AI Summary** button (if AI provider configured)
+
+    <Tip>
+    **Keyboard Navigation** — Use the sidebar to quickly switch between meetings. Your most recent recordings appear at the top.
+    </Tip>
+  </Step>
+
+  <Step title="Generate AI Summary (Optional)">
+    If you've set up an AI provider, you can generate meeting summaries:
+
+    1. Open your completed meeting from the sidebar
+    2. Click **Generate Summary** button
+    3. Wait 10-30 seconds for summary generation
+    4. The summary appears with sections:
+       - **Key Points**
+       - **Action Items**
+       - **Decisions Made**
+       - **Next Steps**
+
+    [Learn how to set up AI summaries →](/quickstart/ai-setup)
+  </Step>
+</Steps>
+
+## Troubleshooting First Recording Issues
+
+<AccordionGroup>
+  <Accordion title="No transcription appears during recording">
+    **Possible causes:**
+    - Microphone not selected or not working
+    - Transcription model not downloaded completely
+    - Voice Activity Detection (VAD) threshold too high
+
+    **Solutions:**
+    1. Check **Audio Settings** to confirm microphone is selected
+    2. Verify model download completed in Model Settings
+    3. Speak clearly into the microphone — VAD requires audible speech
+    4. Check system microphone permissions (macOS: System Preferences > Security & Privacy > Microphone)
+  </Accordion>
+
+  <Accordion title="Recording stops unexpectedly">
+    **Common reasons:**
+    - Audio device disconnected
+    - System ran out of disk space
+    - GPU/CPU overload on low-powered devices
+
+    **Solutions:**
+    1. Ensure audio devices remain connected during recording
+    2. Check available disk space (recordings are ~10 MB per minute)
+    3. Use a lighter transcription model (Whisper `tiny` or `base`)
+    4. Close other resource-intensive applications
+  </Accordion>
+
+  <Accordion title="Audio levels are too low or too high">
+    **Fix low audio:**
+    - Increase system microphone input level
+    - Move closer to the microphone
+    - Use an external microphone with better sensitivity
+
+    **Fix clipping (too loud):**
+    - Reduce system microphone input level
+    - Move farther from the microphone
+    - Meetily's professional audio mixing includes clipping prevention, but extreme levels can still distort
+  </Accordion>
+
+  <Accordion title="Model download fails or is very slow">
+    **For Whisper models:**
+    1. Check your internet connection
+    2. Models download from Hugging Face servers — try again if connection was interrupted
+    3. Manual download: Place model files in `models/` directory
+
+    **For Parakeet models:**
+    1. Similar to Whisper, ensure stable internet connection
+    2. The model is downloaded from ONNX repositories
+    3. Download progress shows in Model Settings
+  </Accordion>
+</AccordionGroup>
+
+## Understanding Recording Status
+
+Meetily shows different states during recording:
+
+| Status | What It Means |
+|--------|---------------|
+| **Ready** | App is ready to start recording |
+| **Recording** | Actively capturing audio and transcribing |
+| **Stopping** | Processing final transcripts after stop |
+| **Processing** | Finalizing transcripts and saving files |
+| **Saving** | Writing audio and transcript data to disk |
+| **Saved** | Recording successfully saved |
+
+<Note>
+**Performance Tip** — GPU acceleration (Metal on macOS, CUDA/Vulkan on Windows/Linux) speeds up transcription by 5-10x. Meetily automatically detects and uses available GPU capabilities.
+</Note>
+
+## Next Steps
+
+Now that you've recorded your first meeting:
+
+<CardGroup cols={2}>
+  <Card title="Audio Setup" icon="signal" href="/quickstart/audio-setup">
+    Configure professional audio capture with microphone and system audio
+  </Card>
+  <Card title="AI Setup" icon="sparkles" href="/quickstart/ai-setup">
+    Set up Ollama or other AI providers for intelligent meeting summaries
+  </Card>
+  <Card title="Recording Features" icon="circle-play" href="/features/recording">
+    Explore advanced recording features and settings
+  </Card>
+  <Card title="Transcription Models" icon="brain" href="/features/transcription">
+    Learn about transcription models and accuracy optimization
+  </Card>
+</CardGroup>

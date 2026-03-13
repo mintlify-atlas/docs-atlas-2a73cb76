@@ -1,0 +1,341 @@
+---
+title: Building from Source
+description: Detailed instructions for building Meetily from source on different platforms
+---
+
+# Building from Source
+
+This guide provides comprehensive instructions for building Meetily from source on Linux, macOS, and Windows, with automatic GPU acceleration support.
+
+<Note>
+  Meetily automatically detects your GPU hardware and configures the best performance settings. No manual configuration is required for basic builds.
+</Note>
+
+## Linux
+
+On Linux, the build system automatically detects your hardware and configures GPU acceleration. Whether you have NVIDIA CUDA, AMD ROCm, Vulkan support, or CPU-only, the build scripts handle everything.
+
+### Quick Start
+
+For most users, these simple commands are all you need:
+
+#### 1. Install Basic Dependencies
+
+<CodeGroup>
+
+```bash Ubuntu/Debian
+sudo apt update
+sudo apt install build-essential cmake git
+```
+
+```bash Fedora/RHEL
+sudo dnf install gcc-c++ cmake git
+```
+
+```bash Arch Linux
+sudo pacman -S base-devel cmake git
+```
+
+</CodeGroup>
+
+#### 2. Build and Run
+
+<CodeGroup>
+
+```bash Development
+# Development mode with hot reload
+./dev-gpu.sh
+```
+
+```bash Production
+# Production build
+./build-gpu.sh
+```
+
+</CodeGroup>
+
+That's it! The scripts automatically detect your GPU and configure acceleration.
+
+### Automatic GPU Detection
+
+The build system detects your hardware in this priority order:
+
+| Priority | Hardware | Detection Method | Build Feature |
+|----------|----------|------------------|---------------|
+| 1️⃣ | **NVIDIA CUDA** | `nvidia-smi` + CUDA toolkit | `--features cuda` |
+| 2️⃣ | **AMD ROCm** | `rocm-smi` + ROCm toolkit | `--features hipblas` |
+| 3️⃣ | **Vulkan** | `vulkaninfo` + Vulkan SDK | `--features vulkan` |
+| 4️⃣ | **OpenBLAS** | BLAS libraries | `--features openblas` |
+| 5️⃣ | **CPU-only** | No requirements | No features |
+
+<Warning>
+  Having GPU drivers alone isn't enough. You need the **development SDK** (CUDA toolkit, ROCm, or Vulkan SDK) for GPU acceleration.
+</Warning>
+
+### GPU Setup Guides
+
+<AccordionGroup>
+
+<Accordion title="NVIDIA CUDA Setup" icon="nvidia">
+
+**Prerequisites:** NVIDIA GPU with compute capability 5.0 or higher
+
+**Step 1: Install CUDA Toolkit**
+
+```bash Ubuntu/Debian
+sudo apt install nvidia-driver-550 nvidia-cuda-toolkit
+
+# Verify installation
+nvidia-smi          # Shows GPU info
+nvcc --version      # Shows CUDA version
+```
+
+**Step 2: Build with CUDA**
+
+```bash
+# Set your GPU's compute capability
+# Example: RTX 3080 = 8.6 → use "86"
+# Example: GTX 1080 = 6.1 → use "61"
+
+CMAKE_CUDA_ARCHITECTURES=75 \
+CMAKE_CUDA_STANDARD=17 \
+CMAKE_POSITION_INDEPENDENT_CODE=ON \
+./build-gpu.sh
+```
+
+<Tip>
+  Find your GPU's compute capability:
+  ```bash
+  nvidia-smi --query-gpu=compute_cap --format=csv
+  ```
+  Convert `7.5` → `75`, `8.6` → `86`, etc.
+</Tip>
+
+**Why these flags?**
+- `CMAKE_CUDA_ARCHITECTURES`: Optimizes for your specific GPU
+- `CMAKE_CUDA_STANDARD=17`: Ensures C++17 compatibility
+- `CMAKE_POSITION_INDEPENDENT_CODE=ON`: Fixes linking issues on modern systems
+
+</Accordion>
+
+<Accordion title="Vulkan Setup" icon="fire">
+
+Vulkan works on NVIDIA, AMD, and Intel GPUs. It's a good cross-platform fallback if CUDA/ROCm don't work.
+
+**Step 1: Install Vulkan SDK and BLAS**
+
+<CodeGroup>
+
+```bash Ubuntu/Debian
+sudo apt install vulkan-sdk libopenblas-dev
+```
+
+```bash Fedora
+sudo dnf install vulkan-devel openblas-devel
+```
+
+```bash Arch Linux
+sudo pacman -S vulkan-devel openblas
+```
+
+</CodeGroup>
+
+**Step 2: Configure Environment**
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export VULKAN_SDK=/usr
+export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu
+
+# Apply changes
+source ~/.bashrc
+```
+
+**Step 3: Build**
+
+```bash
+./build-gpu.sh
+```
+
+The script will automatically detect Vulkan and build with `--features vulkan`.
+
+</Accordion>
+
+<Accordion title="AMD ROCm Setup" icon="microchip">
+
+**Prerequisites:** AMD GPU with ROCm support (RX 5000+, Radeon VII, etc.)
+
+```bash
+# Ubuntu/Debian
+# Add ROCm repository (see https://rocm.docs.amd.com for latest)
+sudo apt install rocm-smi hipcc
+
+# Set environment
+export ROCM_PATH=/opt/rocm
+
+# Verify
+rocm-smi            # Shows GPU info
+hipcc --version     # Shows ROCm version
+
+# Build
+./build-gpu.sh
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+### Advanced Usage
+
+#### Manual Feature Override
+
+You can force a specific acceleration method using the `TAURI_GPU_FEATURE` environment variable:
+
+<CodeGroup>
+
+```bash Force CUDA
+TAURI_GPU_FEATURE=cuda ./build-gpu.sh
+```
+
+```bash Force Vulkan
+TAURI_GPU_FEATURE=vulkan ./build-gpu.sh
+```
+
+```bash Force ROCm
+TAURI_GPU_FEATURE=hipblas ./build-gpu.sh
+```
+
+```bash Force CPU-only
+TAURI_GPU_FEATURE="" ./build-gpu.sh
+```
+
+```bash Force OpenBLAS
+TAURI_GPU_FEATURE=openblas ./build-gpu.sh
+```
+
+</CodeGroup>
+
+#### Build Output Location
+
+After a successful build, find your AppImage at:
+
+```
+src-tauri/target/release/bundle/appimage/Meetily_<version>_amd64.AppImage
+```
+
+### Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="CUDA toolkit not found">
+
+**Fix:** Install `nvidia-cuda-toolkit` or set `CUDA_PATH` environment variable
+
+**Verify:** `nvcc --version` should work
+
+</Accordion>
+
+<Accordion title="Vulkan detected but missing dependencies">
+
+**Fix:** Set both `VULKAN_SDK` and `BLAS_INCLUDE_DIRS` environment variables
+
+**Example:**
+```bash
+export VULKAN_SDK=/usr
+export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu
+```
+
+</Accordion>
+
+<Accordion title="Build works but no GPU acceleration">
+
+**Check detection:** Look at the build output for GPU detection messages
+
+**Verify:** `nvidia-smi` (NVIDIA) or `rocm-smi` (AMD) should work
+
+**Missing SDK:** Install the development toolkit, not just drivers
+
+</Accordion>
+
+</AccordionGroup>
+
+## macOS
+
+On macOS, GPU acceleration (Metal) is enabled by default, making the build process straightforward.
+
+### 1. Install Dependencies
+
+```bash
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install required tools
+brew install cmake node pnpm
+```
+
+### 2. Build and Run
+
+<CodeGroup>
+
+```bash Development
+# Development mode with hot reload
+pnpm tauri:dev
+```
+
+```bash Production
+# Production build
+pnpm tauri:build
+```
+
+</CodeGroup>
+
+The application will be built with Metal GPU acceleration automatically.
+
+<Info>
+  Metal acceleration provides 5-10x faster transcription compared to CPU-only processing.
+</Info>
+
+## Windows
+
+### 1. Install Dependencies
+
+You'll need to install several tools before building:
+
+1. **Node.js** - Download and install from [nodejs.org](https://nodejs.org/)
+2. **Rust** - Install from [rust-lang.org](https://www.rust-lang.org/tools/install)
+3. **Visual Studio Build Tools** - Install the "Desktop development with C++" workload from the Visual Studio Installer
+4. **CMake** - Download and install from [cmake.org](https://cmake.org/download/)
+
+### 2. Build and Run
+
+<CodeGroup>
+
+```powershell Development
+# Development mode with hot reload
+pnpm tauri:dev
+```
+
+```powershell Production
+# Production build
+pnpm tauri:build
+```
+
+</CodeGroup>
+
+<Note>
+  By default, the application builds with CPU-only processing. To enable GPU acceleration (CUDA or Vulkan), you'll need to install the appropriate SDK and configure build features.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Architecture" icon="sitemap" href="/advanced/architecture">
+  Learn about Meetily's system architecture and components
+</Card>
+
+<Card title="Contributing" icon="code-pull-request" href="/advanced/contributing">
+  Guidelines for contributing to the Meetily project
+</Card>
+
+</CardGroup>

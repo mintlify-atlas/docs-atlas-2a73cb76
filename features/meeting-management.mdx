@@ -1,0 +1,430 @@
+---
+title: Meeting Management
+description: Organize, search, and manage your meeting library with powerful tools for finding and accessing your recorded content
+---
+
+Meetily provides a comprehensive meeting management system that makes it easy to organize, search, and access all your recorded meetings.
+
+## Meeting Library
+
+All your meetings are automatically saved and organized in the sidebar:
+
+<CardGroup cols={2}>
+  <Card title="Automatic Organization" icon="folder-tree">
+    Meetings are listed chronologically with the most recent at the top.
+  </Card>
+  
+  <Card title="Persistent Storage" icon="database">
+    All meeting data is stored locally in SQLite with automatic backups.
+  </Card>
+  
+  <Card title="Quick Access" icon="bolt">
+    Click any meeting in the sidebar to instantly open its details page.
+  </Card>
+  
+  <Card title="Smart Search" icon="search">
+    Full-text search across all transcripts and summaries.
+  </Card>
+</CardGroup>
+
+## Creating Meetings
+
+Meetings are created automatically when you start a recording:
+
+<Steps>
+  <Step title="Start Recording">
+    Click the record button to begin a new meeting session.
+  </Step>
+  
+  <Step title="Optional: Name the Meeting">
+    Give your meeting a descriptive title before or during recording. If not named, it will use the timestamp.
+  </Step>
+  
+  <Step title="Stop Recording">
+    When finished, stop the recording. The meeting is automatically saved.
+  </Step>
+  
+  <Step title="Auto-Appears in Sidebar">
+    Your new meeting appears in the sidebar immediately, ready to access.
+  </Step>
+</Steps>
+
+<Tip>
+  Use descriptive meeting names like "Q1 Planning - Engineering" instead of generic names like "Meeting 1" to make them easier to find later.
+</Tip>
+
+## Meeting Details Page
+
+Click any meeting to view its complete details:
+
+### Left Panel: Transcript
+- **Full transcript** with timestamps
+- **Copy transcript** button for easy export
+- **Scroll through content** with virtualized rendering for long meetings
+- **Pagination** for meetings with 500+ transcript segments
+- **Search within transcript** using browser find (Cmd/Ctrl+F)
+
+### Right Panel: Summary
+- **AI-generated summary** (if generated)
+- **Edit and refine** summary content
+- **Generate/Regenerate** summaries on demand
+- **Export options** for saving summaries externally
+
+### Top Bar Actions
+<CardGroup cols={3}>
+  <Card title="Edit Title" icon="pencil">
+    Click the meeting title to rename it inline.
+  </Card>
+  
+  <Card title="Open Folder" icon="folder-open">
+    Access the meeting's folder containing audio and data files.
+  </Card>
+  
+  <Card title="Delete Meeting" icon="trash">
+    Permanently remove the meeting and all associated data.
+  </Card>
+</CardGroup>
+
+## Search & Discovery
+
+Find meetings quickly using the sidebar search:
+
+### Full-Text Search
+Search across all meeting content:
+- Meeting titles
+- Transcript text
+- Summary content
+- Timestamps and metadata
+
+### Search Results
+Results show:
+- **Meeting title** and date
+- **Match context** with highlighted keywords
+- **Jump to location** - click to open the meeting at the matching segment
+
+<CodeGroup>
+```text Example Searches
+"budget approval" - Find budget discussions
+"action items" - Locate meetings with tasks
+"John mentioned" - Find John's contributions
+"Q1 planning" - Quarterly planning meetings
+```
+</CodeGroup>
+
+## Meeting Recovery
+
+Meetily protects your meetings from unexpected interruptions:
+
+<AccordionGroup>
+  <Accordion title="Auto-Recovery on Startup">
+    If the app crashes or is force-quit during a recording, Meetily detects incomplete meetings on next launch.
+    
+    You'll see a **Recovery Dialog** offering to restore these meetings.
+  </Accordion>
+  
+  <Accordion title="Preview Before Recovery">
+    Before recovering, you can:
+    - View the transcript preview
+    - Check the recording timestamp
+    - Decide whether to recover or discard
+  </Accordion>
+  
+  <Accordion title="Automatic Cleanup">
+    Recoverable meetings older than 7 days are automatically cleaned up to save disk space.
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+  The recovery system saved transcripts every few seconds during recording, so even unexpected crashes lose minimal data.
+</Info>
+
+## Organizing Meetings
+
+### Naming Conventions
+
+Develop a consistent naming system for easy organization:
+
+<CodeGroup>
+```text By Project
+Project Alpha - Kickoff
+Project Alpha - Sprint Review
+Project Alpha - Retrospective
+```
+
+```text By Meeting Type
+Standup - Jan 15, 2024
+1:1 - Sarah - Weekly
+All Hands - Q1 2024
+```
+
+```text By Client
+Acme Corp - Discovery Call
+Acme Corp - Design Review
+Acme Corp - Launch Planning
+```
+</CodeGroup>
+
+### Tagging (Coming Soon)
+Future releases will support:
+- Custom tags for categorization
+- Filter by tags in sidebar
+- Bulk tagging operations
+
+## Export & Backup
+
+Protect your meeting data with export and backup options:
+
+### Exporting Individual Meetings
+
+<Steps>
+  <Step title="Open Meeting">
+    Navigate to the meeting details page.
+  </Step>
+  
+  <Step title="Copy Transcript">
+    Use the **Copy Transcript** button to export the full transcript as plain text.
+  </Step>
+  
+  <Step title="Export Summary">
+    Click **Export** in the summary panel to save as Markdown or PDF.
+  </Step>
+  
+  <Step title="Access Audio Files">
+    Click **Open Folder** to access the raw audio recordings (WAV format).
+  </Step>
+</Steps>
+
+### Bulk Export (Coming Soon)
+Planned features:
+- Export all meetings as a ZIP archive
+- Automated backup to cloud storage
+- Import meetings from other apps
+
+## Storage Management
+
+Meetily automatically manages storage to prevent disk space issues:
+
+### Automatic Cleanup
+
+| Content Type | Retention Period | Configurable |
+|--------------|------------------|-------------|
+| Recoverable meetings | 7 days | No |
+| Saved meetings | 24 hours after save | No |
+| Completed meetings | Indefinite | Yes |
+| Audio recordings | 7 days | Yes |
+
+<Warning>
+  Audio recordings are automatically deleted after 7 days to save space. Export important recordings before the retention period expires.
+</Warning>
+
+### Storage Locations
+
+Meeting data is stored locally:
+
+<Tabs>
+  <Tab title="macOS">
+    **Application Support Directory**
+    
+    ```
+    ~/Library/Application Support/Meetily/
+    ├── database.sqlite (meeting metadata)
+    ├── recordings/ (audio files)
+    └── models/ (Whisper models)
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    **AppData Directory**
+    
+    ```
+    %APPDATA%\Meetily\
+    ├── database.sqlite
+    ├── recordings\
+    └── models\
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    **Config Directory**
+    
+    ```
+    ~/.config/meetily/
+    ├── database.sqlite
+    ├── recordings/
+    └── models/
+    ```
+  </Tab>
+</Tabs>
+
+## Meeting Operations
+
+### Editing Meeting Titles
+
+1. Click the meeting title at the top of the details page
+2. Edit the text inline
+3. Press Enter or click outside to save
+4. Changes sync immediately
+
+### Retranscribing Meetings
+
+Reprocess a meeting with different settings:
+
+<Steps>
+  <Step title="Open Meeting Details">
+    Navigate to the meeting you want to retranscribe.
+  </Step>
+  
+  <Step title="Click Retranscribe">
+    In the transcript panel header, click **Retranscribe**.
+  </Step>
+  
+  <Step title="Select Options">
+    Choose a different:
+    - Transcription model (for better accuracy)
+    - Language setting
+    - Processing options
+  </Step>
+  
+  <Step title="Wait for Processing">
+    The meeting is reprocessed with the new settings. This may take a few minutes.
+  </Step>
+</Steps>
+
+<Info>
+  Retranscription requires the original audio file. If the audio has been deleted (after 7 days), retranscription is not possible.
+</Info>
+
+### Deleting Meetings
+
+<Warning>
+  Deleting a meeting is **permanent** and cannot be undone. All associated data (transcript, summary, audio) will be removed.
+</Warning>
+
+To delete a meeting:
+
+1. Open the meeting details page
+2. Click the **Delete** button (trash icon)
+3. Confirm deletion in the prompt
+4. The meeting is removed from your library
+
+## Pagination & Performance
+
+For meetings with extensive transcripts:
+
+### Virtualized Rendering
+- Meetings with 100+ segments use virtual scrolling
+- Only visible content is rendered
+- Smooth scrolling even with thousands of segments
+
+### Lazy Loading
+- Meetings with 500+ segments load in batches
+- Scroll to bottom to load more segments
+- "Loading more..." indicator shows progress
+
+### Performance Stats
+- View segment count: "Showing X of Y segments"
+- Infinite scroll loads 100 segments at a time
+- No performance impact even with 5,000+ segments
+
+<Tip>
+  For very long meetings (2+ hours), consider breaking them into multiple recordings for easier navigation and processing.
+</Tip>
+
+## Integration with Sidebar
+
+The sidebar provides quick access to your meeting library:
+
+### Meeting List
+- **Chronological order**: Most recent meetings first
+- **Visual indicators**: Current meeting highlighted
+- **Quick navigation**: Single-click to open any meeting
+- **Recording status**: Active recording shown with indicator
+
+### Sidebar Collapse
+- Click the collapse icon to minimize the sidebar
+- More screen space for transcript and summary
+- Sidebar state persists across sessions
+
+## Keyboard Shortcuts
+
+Navigate meetings efficiently with keyboard shortcuts:
+
+| Action | macOS | Windows/Linux |
+|--------|-------|---------------|
+| New recording | `Cmd+N` | `Ctrl+N` |
+| Search meetings | `Cmd+K` | `Ctrl+K` |
+| Copy transcript | `Cmd+C` | `Ctrl+C` |
+| Find in transcript | `Cmd+F` | `Ctrl+F` |
+| Close meeting | `Cmd+W` | `Ctrl+W` |
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Meeting not appearing in sidebar">
+    - Refresh the sidebar by clicking the refresh icon
+    - Check that the recording completed successfully
+    - Verify backend connection (status indicator in sidebar)
+    - Check application logs for sync errors
+  </Accordion>
+  
+  <Accordion title="Cannot open meeting details">
+    - Ensure the backend server is running
+    - Check for database corruption (rare)
+    - Try restarting the application
+    - Check that the meeting ID is valid
+  </Accordion>
+  
+  <Accordion title="Search not finding meetings">
+    - Verify search query spelling
+    - Try broader search terms
+    - Check that meetings have transcripts (not just audio)
+    - Rebuild search index (Settings → Advanced)
+  </Accordion>
+  
+  <Accordion title="Slow performance with many meetings">
+    - Enable pagination for long transcripts (automatic)
+    - Archive old meetings by exporting and deleting
+    - Increase system memory allocation
+    - Consider database optimization (Settings → Advanced)
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Name Meetings Immediately">
+    Give meetings descriptive names right after recording while context is fresh.
+  </Step>
+  
+  <Step title="Generate Summaries Promptly">
+    Create AI summaries soon after recording for best results while details are clear.
+  </Step>
+  
+  <Step title="Regular Exports">
+    Export important meetings to external storage for long-term archival.
+  </Step>
+  
+  <Step title="Periodic Cleanup">
+    Review and delete old meetings you no longer need to keep your library manageable.
+  </Step>
+  
+  <Step title="Consistent Naming">
+    Use a naming convention that works for your workflow (by project, date, meeting type, etc.).
+  </Step>
+</Steps>
+
+## Related Features
+
+<CardGroup cols={3}>
+  <Card title="Recording" icon="microphone" href="/features/recording">
+    Start capturing meetings
+  </Card>
+  
+  <Card title="Transcription" icon="closed-captioning" href="/features/transcription">
+    Convert audio to text
+  </Card>
+  
+  <Card title="AI Summaries" icon="sparkles" href="/features/ai-summaries">
+    Generate intelligent summaries
+  </Card>
+</CardGroup>

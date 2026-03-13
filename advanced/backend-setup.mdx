@@ -1,0 +1,401 @@
+---
+title: 'Backend API Setup'
+description: 'Configure and deploy the Meetily FastAPI backend server'
+icon: 'server'
+---
+
+The Meetily backend is a FastAPI-based server that handles meeting storage, transcript management, and LLM integration for generating meeting summaries.
+
+## Architecture Overview
+
+The backend consists of two primary services:
+
+<CardGroup cols={2}>
+  <Card title="FastAPI Backend" icon="python">
+    Meeting management, database operations, and API endpoints (Port 5167)
+  </Card>
+  <Card title="Whisper Server" icon="microphone">
+    Real-time audio transcription using whisper.cpp (Port 8178)
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+<Tabs>
+  <Tab title="Windows">
+    - Python 3.9+ (added to PATH)
+    - Visual Studio Build Tools with C++ workload
+    - CMake (added to PATH)
+    - Git with submodules support
+    - 8GB+ RAM recommended
+  </Tab>
+  <Tab title="macOS">
+    ```bash
+    # Install Xcode Command Line Tools
+    xcode-select --install
+
+    # Install Homebrew dependencies
+    brew install python@3.9 cmake llvm libomp ffmpeg git
+    ```
+  </Tab>
+  <Tab title="Linux">
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get update
+    sudo apt-get install -y python3 python3-pip cmake build-essential git ffmpeg
+
+    # CentOS/RHEL
+    sudo yum install python3 python3-pip cmake gcc-c++ git ffmpeg
+    ```
+  </Tab>
+</Tabs>
+
+## Installation Methods
+
+### Method 1: Pre-built Release (Recommended)
+
+The fastest way to get started:
+
+<Steps>
+  <Step title="Download">
+    Download the latest backend release from [GitHub Releases](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+  </Step>
+  <Step title="Extract">
+    Extract to your preferred location (e.g., `C:\meetily_backend\` or `~/meetily_backend/`)
+  </Step>
+  <Step title="Unblock Files (Windows)">
+    ```powershell
+    Get-ChildItem -Path . -Recurse | Unblock-File
+    ```
+  </Step>
+  <Step title="Start Services">
+    <Tabs>
+      <Tab title="Windows">
+        ```powershell
+        .\start_with_output.ps1
+        ```
+      </Tab>
+      <Tab title="macOS/Linux">
+        ```bash
+        ./clean_start_backend.sh
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+<Note>
+  The pre-built release includes:
+  - Pre-compiled `whisper-server` binary
+  - Complete Python virtual environment
+  - All required dependencies
+  - Interactive model and language selection
+</Note>
+
+### Method 2: Build from Source
+
+For optimal performance and customization:
+
+<Tabs>
+  <Tab title="Windows">
+    ```cmd
+    # Navigate to backend directory
+    cd backend
+
+    # Install dependencies (run as Administrator)
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    .\install_dependancies_for_windows.ps1
+
+    # Build Whisper with your preferred model
+    build_whisper.cmd small
+
+    # Start services
+    start_with_output.ps1
+    ```
+  </Tab>
+  <Tab title="macOS/Linux">
+    ```bash
+    # Navigate to backend directory
+    cd backend
+
+    # Build Whisper with your preferred model
+    ./build_whisper.sh small
+
+    # Start services
+    ./clean_start_backend.sh
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the `backend/app/` directory:
+
+```bash
+# API Keys for LLM Providers
+ANTHROPIC_API_KEY=your_anthropic_key    # For Claude models
+GROQ_API_KEY=your_groq_key              # For Groq models
+OPENAI_API_KEY=your_openai_key          # For OpenAI models
+
+# Database Configuration
+DATABASE_PATH=/app/data/meeting_minutes.db
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=5167
+
+# Whisper Server Configuration
+WHISPER_HOST=localhost
+WHISPER_PORT=8178
+WHISPER_MODEL=models/ggml-base.en.bin
+WHISPER_THREADS=0                       # 0 = auto-detect
+WHISPER_USE_GPU=true
+WHISPER_LANGUAGE=en
+WHISPER_TRANSLATE=false
+WHISPER_DIARIZE=false
+
+# Processing Configuration
+CHUNK_SIZE=5000                         # Transcript chunk size
+CHUNK_OVERLAP=1000                      # Overlap between chunks
+
+# Ollama Configuration (for local LLM)
+OLLAMA_HOST=http://localhost:11434
+```
+
+### Whisper Model Selection
+
+Choose a model based on your hardware and accuracy requirements:
+
+| Model | Size | Accuracy | Speed | Best For |
+|-------|------|----------|-------|----------|
+| `tiny` | 39 MB | Basic | Fastest | Testing, low resources |
+| `tiny.en` | 39 MB | Basic | Fastest | English-only testing |
+| `base` | 142 MB | Good | Fast | General use |
+| `base.en` | 142 MB | Good | Fast | English-only (recommended) |
+| `small` | 244 MB | Better | Medium | Balanced accuracy |
+| `small.en` | 244 MB | Better | Medium | English balanced |
+| `medium` | 769 MB | High | Slow | High accuracy |
+| `medium.en` | 769 MB | High | Slow | English high accuracy |
+| `large-v3` | 1.5 GB | Best | Slowest | Maximum accuracy |
+| `large-v3-turbo` | 1.5 GB | Best | Faster | Optimized large model |
+
+<Tip>
+  For most users, we recommend starting with `base.en` for English meetings or `small` for multilingual support.
+</Tip>
+
+### Service URLs
+
+Once services are running:
+
+<CardGroup cols={2}>
+  <Card title="Whisper Server" icon="microphone" href="http://localhost:8178">
+    Audio transcription service
+    - Health check: `GET /`
+    - Transcribe: `POST /inference`
+  </Card>
+  <Card title="Backend API" icon="brackets-curly" href="http://localhost:5167">
+    Meeting management API
+    - API Docs: `/docs`
+    - Health: `GET /get-meetings`
+  </Card>
+</CardGroup>
+
+## API Endpoints
+
+### Meeting Management
+
+<AccordionGroup>
+  <Accordion title="GET /get-meetings" icon="list">
+    Retrieve all meetings
+
+    **Response:**
+    ```json
+    [
+      {
+        "id": "meeting-uuid",
+        "title": "Team Standup"
+      }
+    ]
+    ```
+  </Accordion>
+
+  <Accordion title="POST /save-transcript" icon="floppy-disk">
+    Save meeting transcripts
+
+    **Request:**
+    ```json
+    {
+      "meeting_title": "Team Standup",
+      "transcripts": [
+        {
+          "id": "transcript-uuid",
+          "text": "Discussion points...",
+          "timestamp": "2024-03-13T10:00:00Z",
+          "audio_start_time": 0.0,
+          "audio_end_time": 120.5,
+          "duration": 120.5
+        }
+      ],
+      "folder_path": "/path/to/meeting/folder"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="GET /get-meeting-by-title/{title}" icon="magnifying-glass">
+    Get meeting details by title
+
+    **Response:**
+    ```json
+    {
+      "id": "meeting-uuid",
+      "title": "Team Standup",
+      "created_at": "2024-03-13T10:00:00Z",
+      "updated_at": "2024-03-13T11:00:00Z",
+      "transcripts": [...]
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="POST /process-transcript" icon="brain">
+    Generate AI summary from transcript
+
+    **Request:**
+    ```json
+    {
+      "text": "Meeting transcript text...",
+      "model": "ollama",
+      "model_name": "qwen2.5:14b",
+      "meeting_id": "meeting-uuid",
+      "chunk_size": 5000,
+      "overlap": 1000,
+      "custom_prompt": "Summarize key points"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port Already in Use" icon="triangle-exclamation">
+    **Symptoms:** Error starting services due to port conflicts
+
+    **Solution:**
+    ```bash
+    # Check what's using the port
+    # Windows
+    netstat -ano | findstr :5167
+    netstat -ano | findstr :8178
+
+    # macOS/Linux
+    lsof -i :5167
+    lsof -i :8178
+
+    # Kill the process or change ports in .env
+    ```
+  </Accordion>
+
+  <Accordion title="Model Download Fails" icon="cloud-arrow-down">
+    **Symptoms:** Whisper model download errors
+
+    **Solution:**
+    ```bash
+    # Manual download using script
+    cd backend
+    ./download-ggml-model.sh base.en
+
+    # Or download directly from Hugging Face
+    # https://huggingface.co/ggerganov/whisper.cpp/tree/main
+    ```
+  </Accordion>
+
+  <Accordion title="Database Initialization Errors" icon="database">
+    **Symptoms:** SQLite errors on startup
+
+    **Solution:**
+    ```bash
+    # Remove corrupted database (backup first!)
+    mv meeting_minutes.db meeting_minutes.db.bak
+
+    # Restart service to create fresh database
+    ./clean_start_backend.sh
+    ```
+  </Accordion>
+
+  <Accordion title="Python Dependencies Issues" icon="python">
+    **Symptoms:** Import errors or missing packages
+
+    **Solution:**
+    ```bash
+    # Recreate virtual environment
+    rm -rf venv/
+    python -m venv venv
+    source venv/bin/activate  # Windows: venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Ensure you have at least 8GB of RAM available when running both services, especially when using larger Whisper models.
+</Warning>
+
+## Performance Optimization
+
+### GPU Acceleration
+
+<Tabs>
+  <Tab title="macOS">
+    Metal acceleration is automatically enabled for Apple Silicon (M1/M2/M3).
+
+    ```bash
+    # Verify Metal support
+    system_profiler SPDisplaysDataType | grep Metal
+    ```
+  </Tab>
+  <Tab title="Windows/Linux NVIDIA">
+    Build with CUDA support:
+
+    ```bash
+    # Set CUDA environment
+    export CUDA_PATH=/usr/local/cuda
+
+    # Build with CUDA
+    cmake -B build -DGGML_CUDA=ON
+    cmake --build build
+    ```
+  </Tab>
+  <Tab title="Windows/Linux AMD">
+    Build with Vulkan support:
+
+    ```bash
+    # Install Vulkan SDK first
+    # Build with Vulkan
+    cmake -B build -DGGML_VULKAN=ON
+    cmake --build build
+    ```
+  </Tab>
+</Tabs>
+
+### Threading Configuration
+
+```bash
+# Auto-detect optimal threads (recommended)
+WHISPER_THREADS=0
+
+# Manual configuration (cores - 1)
+WHISPER_THREADS=7  # For 8-core system
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Deployment" icon="docker" href="/advanced/docker-deployment">
+    Deploy using Docker containers for easier management
+  </Card>
+  <Card title="Database Management" icon="database" href="/advanced/database-management">
+    Learn about database schema and backup procedures
+  </Card>
+</CardGroup>

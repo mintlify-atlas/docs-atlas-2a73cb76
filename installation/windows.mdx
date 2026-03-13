@@ -1,0 +1,376 @@
+---
+title: 'Windows Installation'
+description: 'Install Meetily on Windows with optional GPU acceleration'
+---
+
+# Installing Meetily on Windows
+
+Meetily runs natively on Windows with support for NVIDIA GPU acceleration. This guide covers installation, setup, and troubleshooting for Windows systems.
+
+## System Requirements
+
+<Info>
+**Minimum Requirements**
+- Windows 10 (64-bit) or Windows 11
+- 8 GB RAM (16 GB recommended)
+- 2 GB free disk space
+- Microphone access
+- Internet connection (for initial setup and AI summaries)
+</Info>
+
+### Recommended Specifications
+
+- **Windows 11** for best performance and modern UI support
+- **NVIDIA GPU** (optional) with CUDA support for faster transcription
+- **16 GB RAM** for large language models and long meetings
+- **Dedicated audio interface** (optional) for professional audio quality
+
+### GPU Acceleration Support
+
+| GPU Type | Acceleration | Speed Boost | Requirements |
+|----------|--------------|-------------|-------------|
+| **NVIDIA** | CUDA | 5-10x | CUDA Toolkit, Compatible GPU |
+| **AMD/Intel** | Vulkan | 3-6x | Vulkan SDK + drivers |
+| **No GPU** | CPU-only | 1x (baseline) | None |
+
+<Tip>
+The Windows installer includes CPU-optimized builds that work great without a GPU. GPU acceleration is optional for power users.
+</Tip>
+
+## Download Meetily
+
+<Steps>
+  <Step title="Visit the releases page">
+    Go to the [Meetily releases page](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest) on GitHub.
+  </Step>
+  
+  <Step title="Download the installer">
+    Choose the appropriate installer for your system:
+    - **Recommended**: `meetily_0.3.0_x64-setup.exe` (standard installer)
+    - **Alternative**: `meetily_0.3.0_x64_en-US.msi` (MSI package for IT deployment)
+    
+    <Info>Both installers are functionally identical. The `.exe` provides a guided setup, while `.msi` is better for silent/automated deployment.</Info>
+  </Step>
+  
+  <Step title="Verify the download (optional)">
+    For added security, you can verify the download signature. The release page includes checksums for all files.
+  </Step>
+</Steps>
+
+## Installation
+
+<Steps>
+  <Step title="Run the installer">
+    Double-click the downloaded `.exe` file. Windows SmartScreen may show a warning:
+    
+    <Warning>
+    "Windows protected your PC - Microsoft Defender SmartScreen prevented an unrecognized app from starting."
+    </Warning>
+    
+    Click **More info**, then click **Run anyway** to proceed.
+  </Step>
+  
+  <Step title="Choose installation location">
+    The installer will prompt you to select an installation directory. The default location is:
+    ```
+    C:\Program Files\Meetily
+    ```
+    
+    Click **Next** to continue with the default, or **Browse** to choose a different location.
+  </Step>
+  
+  <Step title="Complete installation">
+    - Review the installation settings
+    - Click **Install** to begin installation
+    - Wait for the installation to complete (usually 1-2 minutes)
+    - Click **Finish** to exit the installer
+    
+    <Tip>Check "Launch Meetily" before clicking Finish to start the app immediately.</Tip>
+  </Step>
+</Steps>
+
+## First Launch
+
+<Steps>
+  <Step title="Open Meetily">
+    Launch Meetily from:
+    - **Start Menu**: Search for "Meetily"
+    - **Desktop shortcut**: If created during installation
+    - **Installation directory**: `C:\Program Files\Meetily\meetily.exe`
+  </Step>
+  
+  <Step title="Grant microphone permission">
+    Windows will prompt you to allow microphone access:
+    
+    1. A notification will appear asking for microphone permission
+    2. Click **Allow** to grant access
+    3. If you accidentally denied permission:
+       - Open **Settings** → **Privacy & Security** → **Microphone**
+       - Find **Meetily** in the app list and enable it
+    
+    <Info>Microphone access is required for recording meetings. Meetily never sends audio data to external servers.</Info>
+  </Step>
+  
+  <Step title="Configure audio devices">
+    On first launch, Meetily will guide you through audio setup:
+    
+    - **Microphone**: Select your physical microphone or headset
+    - **System Audio**: Select your system audio device (loopback)
+    
+    <Tip>Windows automatically supports system audio capture through WASAPI loopback - no virtual audio device needed!</Tip>
+  </Step>
+</Steps>
+
+## Post-Installation Setup
+
+### Audio Configuration
+
+Meetily captures both microphone and system audio (from Zoom, Teams, etc.) automatically on Windows:
+
+<Steps>
+  <Step title="Open audio settings">
+    In Meetily, navigate to **Settings** → **Audio**.
+  </Step>
+  
+  <Step title="Select audio devices">
+    - **Microphone**: Choose your input device (USB mic, headset, built-in mic)
+    - **System Audio**: Select the loopback device matching your output
+    
+    <Info>
+    Windows WASAPI allows Meetily to capture system audio directly without third-party software. The loopback device mirrors your speaker output.
+    </Info>
+  </Step>
+  
+  <Step title="Test audio levels">
+    Use the built-in audio test to ensure both devices are working:
+    1. Click **Test Audio** in settings
+    2. Speak into your microphone - you should see the input meter move
+    3. Play a sound on your computer - the system audio meter should respond
+  </Step>
+</Steps>
+
+### Choosing a Transcription Model
+
+Meetily includes several Whisper models for local transcription:
+
+| Model | Size | Speed (CPU) | Speed (GPU) | Accuracy | Recommended For |
+|-------|------|-------------|-------------|----------|----------------|
+| **tiny** | 75 MB | Fast | Very Fast | Basic | Quick tests |
+| **base** | 142 MB | Moderate | Fast | Good | Short meetings |
+| **small** | 466 MB | Slow | Moderate | Better | Most meetings |
+| **medium** | 1.5 GB | Very Slow | Moderate | Great | Important meetings |
+| **large-v3** | 3 GB | Extremely Slow | Slow | Best | Critical transcription |
+
+<Warning>
+Without GPU acceleration, larger models (medium/large) may struggle with real-time transcription. Start with the `small` model and upgrade if performance allows.
+</Warning>
+
+### Configuring AI Summaries
+
+Meetily can generate meeting summaries using various AI providers:
+
+- **Ollama** (recommended): Run models locally with complete privacy
+- **Claude, Groq, OpenRouter**: Cloud-based options for faster summaries
+- **Custom OpenAI endpoint**: Use your own infrastructure
+
+Configure your preferred provider in **Settings** → **AI Provider**.
+
+## GPU Acceleration (Advanced)
+
+For users with compatible GPUs who want faster transcription, Meetily can be built from source with GPU support:
+
+### NVIDIA GPU (CUDA)
+
+<Steps>
+  <Step title="Install prerequisites">
+    1. Download and install [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+       - Select "Desktop development with C++" workload
+    2. Install [NVIDIA CUDA Toolkit 12.x](https://developer.nvidia.com/cuda-downloads)
+    3. Verify installation: `nvcc --version` in Command Prompt
+  </Step>
+  
+  <Step title="Build from source">
+    Follow the [Building from Source](/development#windows) guide with CUDA enabled.
+    
+    Expected performance: **5-10x faster** transcription compared to CPU.
+  </Step>
+</Steps>
+
+### AMD/Intel GPU (Vulkan)
+
+<Steps>
+  <Step title="Install Vulkan SDK">
+    1. Download [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) for Windows
+    2. Run the installer and complete setup
+    3. Verify: `vulkaninfo` in Command Prompt should output GPU details
+  </Step>
+  
+  <Step title="Build from source">
+    Follow the [Building from Source](/development#windows) guide with Vulkan enabled.
+    
+    Expected performance: **3-6x faster** transcription compared to CPU.
+  </Step>
+</Steps>
+
+<Info>
+GPU-accelerated builds require building from source. The pre-built installer uses CPU-only processing for maximum compatibility.
+</Info>
+
+## Updating Meetily
+
+Meetily includes automatic update checking:
+
+1. When an update is available, you'll see a notification
+2. Click **Download Update** to get the latest version
+3. Once downloaded, the installer will run automatically
+4. Follow the prompts to complete the update
+
+You can also manually check for updates in **Settings** → **About**.
+
+## Troubleshooting
+
+### Installer Shows SmartScreen Warning
+
+**Issue**: Windows SmartScreen blocks the installer.
+
+**Solution**:
+1. Click **More info** on the SmartScreen prompt
+2. Click **Run anyway**
+3. This is normal for applications without an Extended Validation (EV) certificate
+
+<Info>
+Meetily is open source and safe to run. SmartScreen warnings appear because the app isn't yet widely distributed enough for Microsoft's reputation system.
+</Info>
+
+### Microphone Not Working
+
+**Issue**: Meetily can't access the microphone.
+
+**Solution**:
+1. Open **Settings** → **Privacy & Security** → **Microphone**
+2. Ensure "Let apps access your microphone" is **ON**
+3. Scroll down and ensure **Meetily** is enabled
+4. Restart Meetily
+
+### System Audio Not Capturing
+
+**Issue**: Only microphone audio is recorded, no system audio from meeting apps.
+
+**Solution**:
+1. In Meetily settings, verify **System Audio** device is selected
+2. Ensure your meeting app (Zoom, Teams) is outputting audio to your default speakers
+3. Check Windows Sound settings:
+   - Right-click speaker icon → **Sound settings**
+   - Verify your output device is set correctly
+4. Try restarting Meetily after changing audio devices
+
+### Transcription is Very Slow
+
+**Issue**: Real-time transcription lags significantly behind audio.
+
+**Solution**:
+- **Use a smaller model**: Switch from `medium` to `small` or `base` in settings
+- **Close background apps**: Free up CPU resources
+- **Check Task Manager**: Ensure Meetily is using CPU/GPU effectively
+- **Consider GPU acceleration**: See [GPU Acceleration section](#gpu-acceleration-advanced)
+
+### App Won't Start After Installation
+
+**Issue**: Double-clicking Meetily does nothing or shows an error.
+
+**Solution**:
+1. Check if Windows Defender is blocking the app:
+   - Open **Windows Security** → **Virus & threat protection** → **Protection history**
+   - If Meetily is blocked, click **Allow on device**
+2. Run as administrator:
+   - Right-click Meetily shortcut → **Run as administrator**
+3. Reinstall the application
+
+### "Cannot Connect to Backend" Error
+
+**Issue**: Meetily shows a connection error on launch.
+
+**Solution**:
+1. Check if Windows Firewall is blocking the app:
+   - **Windows Security** → **Firewall & network protection** → **Allow an app through firewall**
+   - Ensure **Meetily** is checked for both Private and Public networks
+2. Check if port 5167 is already in use:
+   - Open Command Prompt and run: `netstat -ano | findstr :5167`
+   - If another process is using it, close that application
+3. Restart Meetily
+
+### Audio Quality Issues
+
+**Issue**: Recorded audio sounds distorted or has clipping.
+
+**Solution**:
+1. Open Meetily **Settings** → **Audio**
+2. Reduce **Microphone Gain** slider if audio is clipping
+3. Reduce **System Audio Gain** if system audio is too loud
+4. Enable **Ducking** to automatically reduce system audio when speaking
+5. Check Windows audio enhancements:
+   - Right-click speaker icon → **Sound settings** → **Device properties**
+   - Under "Audio enhancements", try disabling enhancements
+
+### Installation Failed or Corrupted
+
+**Issue**: Installer fails to complete or app won't run after installation.
+
+**Solution**:
+1. Uninstall Meetily:
+   - **Settings** → **Apps** → Find **Meetily** → **Uninstall**
+2. Delete remaining files:
+   ```
+   C:\Program Files\Meetily
+   %APPDATA%\Meetily
+   %LOCALAPPDATA%\Meetily
+   ```
+3. Redownload the installer from GitHub releases
+4. Run installer as administrator: Right-click → **Run as administrator**
+
+## Uninstalling Meetily
+
+To completely remove Meetily from your system:
+
+<Steps>
+  <Step title="Uninstall via Settings">
+    1. Open **Settings** → **Apps** → **Installed apps**
+    2. Find **Meetily** in the list
+    3. Click the three dots → **Uninstall**
+    4. Confirm the uninstallation
+  </Step>
+  
+  <Step title="Remove application data (optional)">
+    To remove recordings, transcripts, and settings:
+    
+    1. Press **Win + R** to open Run dialog
+    2. Type `%APPDATA%` and press Enter
+    3. Delete the **Meetily** folder
+    4. Repeat for `%LOCALAPPDATA%` (local cache and logs)
+  </Step>
+</Steps>
+
+## Getting Help
+
+If you encounter issues not covered here:
+
+- **GitHub Issues**: [Report a bug](https://github.com/Zackriya-Solutions/meeting-minutes/issues)
+- **Discord**: Join the [Meetily Discord](https://discord.gg/crRymMQBFH) for community support
+- **Documentation**: Browse the [full documentation](https://meetily.ai/docs)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn how to record your first meeting
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/privacy">
+    Customize Meetily settings for your workflow
+  </Card>
+  <Card title="AI Providers" icon="brain" href="/ai-providers/ollama">
+    Set up AI summaries with Ollama or cloud providers
+  </Card>
+  <Card title="Building from Source" icon="code" href="/development">
+    Build Meetily with GPU acceleration enabled
+  </Card>
+</CardGroup>

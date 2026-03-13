@@ -1,0 +1,344 @@
+---
+title: "Import & Enhance"
+description: "Import existing audio files and re-transcribe recordings with different models or languages"
+---
+
+# Import & Enhance
+
+<Info>
+**Beta Feature**: Import & Enhance is available in Community Edition as a beta feature. Enable it in Settings → Beta Features.
+</Info>
+
+The Import & Enhance feature allows you to bring external audio files into Meetily for transcription, or re-transcribe existing recordings with different settings. All processing happens locally on your device.
+
+## Key Capabilities
+
+### Import External Audio
+
+Bring pre-recorded meetings into Meetily:
+
+- **Multiple formats**: MP3, WAV, M4A, FLAC, OGG, and more
+- **Large files**: Support for files up to 20GB
+- **Local processing**: No cloud upload required
+- **Automatic transcription**: Generate transcripts using your preferred model
+
+### Re-transcribe Existing Recordings
+
+Enhance recordings you've already captured:
+
+- **Try different models**: Compare Whisper vs. Parakeet accuracy
+- **Change languages**: Re-transcribe with correct language setting
+- **Improve quality**: Use larger/newer models for better results
+- **Experiment safely**: Original recordings and transcripts preserved
+
+## Enabling the Feature
+
+<Steps>
+  <Step title="Open Settings">
+    Click the settings icon (⚙️) in the sidebar
+  </Step>
+  <Step title="Navigate to Beta Features">
+    Find the "Beta Features" section
+  </Step>
+  <Step title="Enable Import & Enhance">
+    Toggle on "Import audio files to transcribe or retranscribe existing meetings"
+  </Step>
+  <Step title="Restart if needed">
+    Some beta features may require app restart
+  </Step>
+</Steps>
+
+## Importing Audio Files
+
+### Supported Formats
+
+Meetily supports standard audio formats:
+
+```
+MP3, WAV, M4A, AAC, FLAC, OGG, OPUS, WMA
+```
+
+### Import Process
+
+<Steps>
+  <Step title="Select Audio File">
+    Use the import dialog to browse for your audio file
+  </Step>
+  <Step title="Configure Settings">
+    Choose transcription model, language, and meeting name
+  </Step>
+  <Step title="Start Import">
+    Click "Import" to begin processing
+  </Step>
+  <Step title="Monitor Progress">
+    Watch real-time progress through decoding, VAD, and transcription stages
+  </Step>
+</Steps>
+
+### What Happens During Import
+
+The import process includes several stages:
+
+#### 1. File Validation
+- Checks file format compatibility
+- Validates file size (max 20GB)
+- Extracts audio metadata (duration, format, bitrate)
+
+#### 2. Audio Decoding
+- Converts to standard format (48kHz, mono)
+- Extracts raw audio samples
+- Progress updates shown in real-time
+
+#### 3. Voice Activity Detection (VAD)
+- Identifies speech segments
+- Filters out silence and non-speech audio
+- Reduces transcription time by ~70%
+
+#### 4. Transcription
+- Processes speech segments with selected model
+- Generates timestamped transcript segments
+- Creates meeting folder with audio and transcript
+
+#### 5. Storage
+- Saves to recordings directory
+- Creates meeting metadata
+- Syncs with backend database
+
+## Re-transcribing Recordings
+
+### When to Re-transcribe
+
+#### Wrong Language Detected
+
+If Whisper auto-detected the wrong language:
+
+```
+Original: Auto-detect → Incorrect language
+Enhanced: Manually specify correct language
+```
+
+#### Better Model Available
+
+Upgrade to a more accurate model:
+
+```
+Original: whisper-base (fast, decent accuracy)
+Enhanced: whisper-medium (slower, high accuracy)
+```
+
+#### Testing Different Engines
+
+Compare transcription quality:
+
+```
+Original: Whisper small model
+Enhanced: Parakeet TDT model (faster inference)
+```
+
+### Re-transcription Workflow
+
+<Steps>
+  <Step title="Select Meeting">
+    Choose an existing meeting from your history
+  </Step>
+  <Step title="Open Import Menu">
+    Access the "Re-transcribe" option (requires beta feature enabled)
+  </Step>
+  <Step title="Choose New Settings">
+    Select different model, language, or parameters
+  </Step>
+  <Step title="Generate New Transcript">
+    Original transcript and audio preserved; new version created
+  </Step>
+</Steps>
+
+<Warning>
+Re-transcription creates a **new meeting entry**. Your original recording and transcript remain untouched.
+</Warning>
+
+## Technical Details
+
+### Audio Processing Pipeline
+
+The import system uses the same pipeline as live recording:
+
+```rust
+Audio File
+  → Decoder (ffmpeg)
+  → Resampler (48kHz mono)
+  → VAD Filter (speech detection)
+  → Whisper/Parakeet Engine
+  → Transcript Segments
+  → Meeting Storage
+```
+
+### VAD Configuration
+
+Import uses extended VAD redemption time:
+
+- **Live recording VAD**: 400ms redemption (bridges quick pauses)
+- **Import VAD**: 2000ms redemption (prevents fragmenting sentences)
+
+Longer redemption prevents natural speech pauses (0.5-2s) from splitting transcripts into tiny segments.
+
+### Performance Considerations
+
+#### File Size Limits
+
+- **Maximum**: 20GB per file
+- **Recommended**: Under 2GB for faster processing
+- **Typical 1-hour meeting**: 50-150MB (depends on bitrate)
+
+#### Processing Time
+
+Transcription speed varies by model and hardware:
+
+| Model | GPU | CPU | 1-Hour Meeting |
+|-------|-----|-----|----------------|
+| base | 5-10 min | 20-30 min | Fast |
+| small | 10-15 min | 30-45 min | Medium |
+| medium | 20-30 min | 60-90 min | Slow |
+| large-v3 | 30-45 min | 120+ min | Very Slow |
+
+<Tip>
+Use **GPU acceleration** (Metal on macOS, CUDA/Vulkan on Windows/Linux) for 5-10x faster processing.
+</Tip>
+
+## Use Cases
+
+### Podcast Episode Transcripts
+
+Import published episodes for searchable transcripts:
+
+1. Download episode MP3
+2. Import to Meetily
+3. Generate transcript with timestamps
+4. Export as markdown for show notes
+
+### Interview Recordings
+
+Transcribe recorded interviews:
+
+- Voice memos from mobile devices
+- Zoom/Teams downloaded recordings
+- Dictaphone recordings
+- Phone call recordings (where legal)
+
+### Legacy Meeting Archives
+
+Bring historical recordings into Meetily:
+
+- Migrate from other transcription tools
+- Process archived meeting recordings
+- Create searchable meeting library
+
+### Multi-Language Content
+
+Transcribe content in different languages:
+
+- International team meetings
+- Customer interviews in various regions
+- Multilingual training sessions
+
+## Troubleshooting
+
+### Import Fails
+
+**Issue**: "Failed to decode audio file"
+
+**Solutions**:
+- Check file format is supported
+- Try converting to WAV or MP3 first
+- Ensure file isn't corrupted
+- Verify file size under 20GB
+
+### Poor Transcription Quality
+
+**Issue**: Lots of errors in transcript
+
+**Solutions**:
+- Use larger model (small → medium → large)
+- Specify correct language (don't rely on auto-detect)
+- Check audio quality (clear speech, minimal noise)
+- Try different transcription engine (Whisper vs. Parakeet)
+
+### Slow Processing
+
+**Issue**: Import taking too long
+
+**Solutions**:
+- Enable GPU acceleration in settings
+- Use smaller/quantized model
+- Close other resource-intensive apps
+- Consider PRO version for optimized transcription
+
+## Privacy & Storage
+
+### Local Processing
+
+All import and transcription happens on your device:
+
+- **No cloud upload**: Audio never leaves your machine
+- **No API calls**: Transcription runs locally (unless using external LLM for summary)
+- **Your storage**: Files saved to your recordings directory
+
+### Storage Location
+
+**macOS**:
+```
+~/Documents/Meetily Recordings/
+```
+
+**Windows**:
+```
+C:\Users\<username>\Documents\Meetily Recordings\
+```
+
+**Linux**:
+```
+~/Documents/Meetily Recordings/
+```
+
+Each imported meeting creates:
+- `audio.wav` - Processed audio file
+- `transcript.json` - Timestamped segments
+- `metadata.json` - Meeting information
+
+## Known Limitations (Beta)
+
+<Warning>
+As a beta feature, Import & Enhance has some limitations:
+</Warning>
+
+- **Single file at a time**: No batch import (yet)
+- **Limited format validation**: Some exotic formats may fail
+- **No resume on error**: Failed imports must restart from beginning
+- **No speaker diarization**: Imports use same speaker-agnostic transcription
+
+## Roadmap
+
+### Planned Improvements
+
+- Batch import multiple files
+- Drag-and-drop audio import
+- Enhanced format support (video files, extract audio)
+- Resume interrupted imports
+- Compare transcript versions side-by-side
+- Import from URLs (YouTube, podcast feeds)
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Transcription Models" icon="microchip" href="/configuration/whisper-models">
+    Choose between Whisper and Parakeet engines
+  </Card>
+  <Card title="Export Options" icon="download" href="/features/export-options">
+    Export transcripts in multiple formats
+  </Card>
+  <Card title="GPU Acceleration" icon="bolt" href="/configuration/gpu-acceleration">
+    Speed up transcription with hardware acceleration
+  </Card>
+  <Card title="Privacy & Security" icon="shield" href="/configuration/privacy">
+    Understand how Meetily protects your data
+  </Card>
+</CardGroup>

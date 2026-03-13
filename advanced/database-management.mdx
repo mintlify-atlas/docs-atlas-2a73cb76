@@ -1,0 +1,590 @@
+---
+title: 'Database Management'
+description: 'Understand and manage the Meetily SQLite database'
+icon: 'database'
+---
+
+Meetily uses SQLite for local data storage, providing a lightweight, serverless database solution for meeting transcripts, summaries, and configuration.
+
+## Database Overview
+
+<CardGroup cols={2}>
+  <Card title="Database Engine" icon="database">
+    SQLite 3 - Serverless, zero-configuration
+  </Card>
+  <Card title="Async Operations" icon="bolt">
+    aiosqlite for non-blocking database operations
+  </Card>
+  <Card title="Location" icon="folder">
+    `backend/data/meeting_minutes.db`
+  </Card>
+  <Card title="Size" icon="hard-drive">
+    Grows with meeting data (typically < 100MB)
+  </Card>
+</CardGroup>
+
+## Database Schema
+
+The database consists of six main tables:
+
+### Meetings Table
+
+Stores meeting metadata and references.
+
+```sql
+CREATE TABLE meetings (
+    id TEXT PRIMARY KEY,              -- UUID
+    title TEXT NOT NULL,              -- Meeting name
+    created_at TEXT NOT NULL,         -- ISO 8601 timestamp
+    updated_at TEXT NOT NULL,         -- ISO 8601 timestamp
+    folder_path TEXT                  -- Path to meeting folder
+);
+```
+
+**Fields:**
+- `id`: Unique identifier (UUID v4)
+- `title`: User-defined meeting name
+- `created_at`: Meeting creation timestamp
+- `updated_at`: Last modification timestamp
+- `folder_path`: Optional path to meeting audio/transcript files
+
+### Transcripts Table
+
+Stores individual transcript segments with audio timing information.
+
+```sql
+CREATE TABLE transcripts (
+    id TEXT PRIMARY KEY,              -- UUID
+    meeting_id TEXT NOT NULL,         -- Foreign key to meetings
+    transcript TEXT NOT NULL,         -- Transcribed text
+    timestamp TEXT NOT NULL,          -- ISO 8601 timestamp
+    summary TEXT,                     -- Optional segment summary
+    action_items TEXT,                -- JSON array of action items
+    key_points TEXT,                  -- JSON array of key points
+    audio_start_time REAL,            -- Start time in recording (seconds)
+    audio_end_time REAL,              -- End time in recording (seconds)
+    duration REAL,                    -- Segment duration (seconds)
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+**Audio Timing Fields:**
+- `audio_start_time`: Position in original recording when segment starts
+- `audio_end_time`: Position in original recording when segment ends
+- `duration`: Length of this transcript segment
+
+<Note>
+  Audio timing enables synchronization between transcript text and audio playback for precise navigation.
+</Note>
+
+### Summary Processes Table
+
+Tracks AI summarization jobs and their results.
+
+```sql
+CREATE TABLE summary_processes (
+    meeting_id TEXT PRIMARY KEY,      -- Foreign key to meetings
+    status TEXT NOT NULL,             -- PENDING, PROCESSING, COMPLETED, ERROR
+    created_at TEXT NOT NULL,         -- ISO 8601 timestamp
+    updated_at TEXT NOT NULL,         -- ISO 8601 timestamp
+    error TEXT,                       -- Error message if failed
+    result TEXT,                      -- JSON summary result
+    start_time TEXT,                  -- Processing start time
+    end_time TEXT,                    -- Processing end time
+    chunk_count INTEGER DEFAULT 0,    -- Number of chunks processed
+    processing_time REAL DEFAULT 0.0, -- Total processing time (seconds)
+    metadata TEXT,                    -- JSON metadata
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+**Status Values:**
+- `PENDING`: Queued for processing
+- `PROCESSING`: Currently being processed
+- `COMPLETED`: Successfully completed
+- `ERROR`: Failed with error
+
+### Transcript Chunks Table
+
+Stores original transcript text for processing.
+
+```sql
+CREATE TABLE transcript_chunks (
+    meeting_id TEXT PRIMARY KEY,      -- Foreign key to meetings
+    meeting_name TEXT,                -- Meeting title
+    transcript_text TEXT NOT NULL,    -- Full transcript text
+    model TEXT NOT NULL,              -- LLM provider (ollama, claude, etc.)
+    model_name TEXT NOT NULL,         -- Specific model name
+    chunk_size INTEGER,               -- Size of chunks for processing
+    overlap INTEGER,                  -- Overlap between chunks
+    created_at TEXT NOT NULL,         -- ISO 8601 timestamp
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+### Settings Tables
+
+Store user configuration for LLM providers and models.
+
+```sql
+-- General settings (summarization)
+CREATE TABLE settings (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,           -- LLM provider
+    model TEXT NOT NULL,              -- Model name
+    whisperModel TEXT NOT NULL,       -- Whisper model name
+    groqApiKey TEXT,                  -- API keys (encrypted)
+    openaiApiKey TEXT,
+    anthropicApiKey TEXT,
+    ollamaApiKey TEXT
+);
+
+-- Transcript-specific settings
+CREATE TABLE transcript_settings (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    whisperApiKey TEXT,
+    deepgramApiKey TEXT,
+    elevenLabsApiKey TEXT,
+    groqApiKey TEXT,
+    openaiApiKey TEXT
+);
+```
+
+## Database Operations
+
+### Initialization
+
+The database is automatically initialized on first run:
+
+```python
+from app.db import DatabaseManager
+
+db = DatabaseManager()  # Creates tables if they don't exist
+```
+
+### Common Queries
+
+<AccordionGroup>
+  <Accordion title="Get All Meetings" icon="list">
+    ```python
+    async def get_all_meetings(db: DatabaseManager):
+        async with db._get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT id, title FROM meetings ORDER BY updated_at DESC"
+            )
+            return await cursor.fetchall()
+    ```
+  </Accordion>
+
+  <Accordion title="Save Meeting with Transcripts" icon="floppy-disk">
+    ```python
+    async def save_meeting(db: DatabaseManager, title: str, transcripts: list):
+        meeting_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+        
+        async with db._get_connection() as conn:
+            # Insert meeting
+            await conn.execute(
+                "INSERT INTO meetings (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (meeting_id, title, now, now)
+            )
+            
+            # Insert transcripts
+            for t in transcripts:
+                await conn.execute(
+                    """INSERT INTO transcripts 
+                       (id, meeting_id, transcript, timestamp, audio_start_time, audio_end_time, duration)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (t['id'], meeting_id, t['text'], t['timestamp'], 
+                     t.get('audio_start_time'), t.get('audio_end_time'), t.get('duration'))
+                )
+            
+            await conn.commit()
+        return meeting_id
+    ```
+  </Accordion>
+
+  <Accordion title="Get Meeting Details" icon="magnifying-glass">
+    ```python
+    async def get_meeting_details(db: DatabaseManager, meeting_id: str):
+        async with db._get_connection() as conn:
+            # Get meeting
+            cursor = await conn.execute(
+                "SELECT * FROM meetings WHERE id = ?",
+                (meeting_id,)
+            )
+            meeting = await cursor.fetchone()
+            
+            # Get transcripts
+            cursor = await conn.execute(
+                """SELECT * FROM transcripts 
+                   WHERE meeting_id = ? 
+                   ORDER BY audio_start_time ASC""",
+                (meeting_id,)
+            )
+            transcripts = await cursor.fetchall()
+            
+        return meeting, transcripts
+    ```
+  </Accordion>
+
+  <Accordion title="Update Summary Status" icon="sync">
+    ```python
+    async def update_summary(db: DatabaseManager, meeting_id: str, status: str, result: dict = None):
+        now = datetime.utcnow().isoformat()
+        
+        async with db._get_connection() as conn:
+            await conn.execute(
+                """UPDATE summary_processes 
+                   SET status = ?, updated_at = ?, result = ?, end_time = ?
+                   WHERE meeting_id = ?""",
+                (status, now, json.dumps(result) if result else None, now, meeting_id)
+            )
+            await conn.commit()
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Backup Procedures
+
+### Manual Backup
+
+<Tabs>
+  <Tab title="Windows">
+    ```powershell
+    # Create backup directory
+    mkdir -p ~/backups
+
+    # Backup database
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    Copy-Item backend/data/meeting_minutes.db ~/backups/meeting_minutes_$timestamp.db
+
+    # Verify backup
+    sqlite3 ~/backups/meeting_minutes_$timestamp.db "PRAGMA integrity_check;"
+    ```
+  </Tab>
+  <Tab title="macOS/Linux">
+    ```bash
+    # Create backup directory
+    mkdir -p ~/backups
+
+    # Backup database
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    cp backend/data/meeting_minutes.db ~/backups/meeting_minutes_$timestamp.db
+
+    # Verify backup
+    sqlite3 ~/backups/meeting_minutes_$timestamp.db "PRAGMA integrity_check;"
+    ```
+  </Tab>
+</Tabs>
+
+### Automated Backup Script
+
+```bash backup.sh
+#!/bin/bash
+
+# Configuration
+DB_PATH="backend/data/meeting_minutes.db"
+BACKUP_DIR="$HOME/backups/meetily"
+RETENTION_DAYS=30
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
+# Backup with timestamp
+timestamp=$(date +%Y%m%d_%H%M%S)
+backup_file="$BACKUP_DIR/meeting_minutes_$timestamp.db"
+
+echo "Creating backup: $backup_file"
+sqlite3 "$DB_PATH" ".backup '$backup_file'"
+
+# Verify backup
+if sqlite3 "$backup_file" "PRAGMA integrity_check;" | grep -q "ok"; then
+    echo "Backup verified successfully"
+    
+    # Compress backup
+    gzip "$backup_file"
+    echo "Backup compressed: ${backup_file}.gz"
+    
+    # Remove old backups
+    find "$BACKUP_DIR" -name "*.db.gz" -mtime +$RETENTION_DAYS -delete
+    echo "Removed backups older than $RETENTION_DAYS days"
+else
+    echo "ERROR: Backup verification failed"
+    rm "$backup_file"
+    exit 1
+fi
+```
+
+### Scheduled Backups
+
+<Tabs>
+  <Tab title="Windows (Task Scheduler)">
+    ```powershell
+    # Create scheduled task for daily backups
+    $action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument '-File C:\path\to\backup.ps1'
+    $trigger = New-ScheduledTaskTrigger -Daily -At 2am
+    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -RunLevel Highest
+    
+    Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Meetily Database Backup" -Description "Daily backup of Meetily database" -Principal $principal
+    ```
+  </Tab>
+  <Tab title="macOS/Linux (Cron)">
+    ```bash
+    # Edit crontab
+    crontab -e
+
+    # Add daily backup at 2 AM
+    0 2 * * * /path/to/backup.sh >> /var/log/meetily-backup.log 2>&1
+    ```
+  </Tab>
+</Tabs>
+
+## Database Migration
+
+### Migrate from Existing Installation
+
+The `setup-db.sh` script automatically discovers and migrates existing databases:
+
+```bash
+# Auto-detect and migrate
+cd backend
+./setup-db.sh --auto
+
+# Migrate from specific path
+./setup-db.sh --db-path /path/to/old/meeting_minutes.db
+
+# Fresh installation (skip migration)
+./setup-db.sh --fresh
+```
+
+**Auto-Discovery Paths:**
+- `/opt/homebrew/Cellar/meetily-backend/*/backend/meeting_minutes.db`
+- `~/.meetily/meeting_minutes.db`
+- `~/Documents/meetily/meeting_minutes.db`
+- `~/Desktop/meeting_minutes.db`
+- `./meeting_minutes.db`
+
+### Manual Migration
+
+```bash
+# Stop services
+docker-compose down  # or ./clean_start_backend.sh stop
+
+# Backup current database
+cp backend/data/meeting_minutes.db backend/data/meeting_minutes.db.backup
+
+# Copy old database
+cp /path/to/old/meeting_minutes.db backend/data/meeting_minutes.db
+
+# Verify integrity
+sqlite3 backend/data/meeting_minutes.db "PRAGMA integrity_check;"
+
+# Restart services
+docker-compose up -d  # or ./clean_start_backend.sh
+```
+
+## Maintenance
+
+### Optimize Database
+
+```bash
+# Vacuum database (reclaim space)
+sqlite3 backend/data/meeting_minutes.db "VACUUM;"
+
+# Analyze for query optimization
+sqlite3 backend/data/meeting_minutes.db "ANALYZE;"
+
+# Reindex all tables
+sqlite3 backend/data/meeting_minutes.db "REINDEX;"
+```
+
+### Check Database Health
+
+```bash
+# Integrity check
+sqlite3 backend/data/meeting_minutes.db "PRAGMA integrity_check;"
+
+# Foreign key check
+sqlite3 backend/data/meeting_minutes.db "PRAGMA foreign_key_check;"
+
+# Get database stats
+sqlite3 backend/data/meeting_minutes.db "
+  SELECT name, sql FROM sqlite_master WHERE type='table';
+  SELECT COUNT(*) FROM meetings;
+  SELECT COUNT(*) FROM transcripts;
+  SELECT COUNT(*) FROM summary_processes;
+"
+```
+
+### Database Size Management
+
+```bash
+# Check database size
+du -h backend/data/meeting_minutes.db
+
+# Check table sizes
+sqlite3 backend/data/meeting_minutes.db "
+  SELECT 
+    name,
+    (SELECT COUNT(*) FROM " || name || ") as rows,
+    (SELECT SUM(pgsize) FROM dbstat WHERE name=parent.name) as size
+  FROM sqlite_master parent WHERE type='table';
+"
+
+# Cleanup old summaries (optional)
+sqlite3 backend/data/meeting_minutes.db "
+  DELETE FROM summary_processes 
+  WHERE status='ERROR' 
+  AND datetime(created_at) < datetime('now', '-30 days');
+"
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Database Locked Error" icon="lock">
+    **Symptoms:** `database is locked` error
+
+    **Causes:**
+    - Multiple processes accessing database
+    - Stale lock file
+    - Concurrent writes
+
+    **Solutions:**
+    ```bash
+    # Stop all services
+    docker-compose down
+
+    # Remove lock files
+    rm backend/data/meeting_minutes.db-shm
+    rm backend/data/meeting_minutes.db-wal
+
+    # Restart services
+    docker-compose up -d
+    ```
+  </Accordion>
+
+  <Accordion title="Corrupted Database" icon="triangle-exclamation">
+    **Symptoms:** Integrity check fails
+
+    **Recovery:**
+    ```bash
+    # Restore from backup
+    cp ~/backups/meeting_minutes_YYYYMMDD.db backend/data/meeting_minutes.db
+
+    # Or attempt recovery
+    sqlite3 backend/data/meeting_minutes.db ".recover" | sqlite3 recovered.db
+    mv recovered.db backend/data/meeting_minutes.db
+    ```
+  </Accordion>
+
+  <Accordion title="Migration Failures" icon="database">
+    **Common issues:**
+    - Schema version mismatch
+    - Missing columns
+    - Foreign key violations
+
+    **Manual schema update:**
+    ```sql
+    -- Add missing columns
+    ALTER TABLE meetings ADD COLUMN folder_path TEXT;
+    ALTER TABLE transcripts ADD COLUMN audio_start_time REAL;
+    ALTER TABLE transcripts ADD COLUMN audio_end_time REAL;
+    ALTER TABLE transcripts ADD COLUMN duration REAL;
+    ```
+  </Accordion>
+
+  <Accordion title="Permission Errors" icon="shield">
+    **Fix file permissions:**
+    ```bash
+    # Stop services
+    docker-compose down
+
+    # Fix ownership
+    sudo chown -R $(id -u):$(id -g) backend/data/
+    chmod 644 backend/data/meeting_minutes.db
+
+    # Restart
+    docker-compose up -d
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Schema Validation
+
+The `SchemaValidator` class ensures database integrity:
+
+```python
+from app.schema_validator import SchemaValidator
+
+# Validate schema on startup
+validator = SchemaValidator('backend/data/meeting_minutes.db')
+validator.validate_schema()
+
+# Expected tables and columns are automatically verified
+# Missing columns are added via migrations
+# Foreign keys and indexes are checked
+```
+
+## Export and Import
+
+### Export Data
+
+```bash
+# Export to SQL
+sqlite3 backend/data/meeting_minutes.db .dump > meetily_export.sql
+
+# Export specific table
+sqlite3 backend/data/meeting_minutes.db ".mode csv" ".headers on" "SELECT * FROM meetings;" > meetings.csv
+
+# Export as JSON
+sqlite3 backend/data/meeting_minutes.db ".mode json" "SELECT * FROM meetings;" > meetings.json
+```
+
+### Import Data
+
+```bash
+# Import from SQL
+sqlite3 new_database.db < meetily_export.sql
+
+# Import CSV
+sqlite3 backend/data/meeting_minutes.db "
+  .mode csv
+  .import meetings.csv meetings
+"
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Backups" icon="floppy-disk">
+    Schedule daily automated backups with retention policy
+  </Card>
+  <Card title="Health Checks" icon="heartbeat">
+    Run weekly integrity checks and optimizations
+  </Card>
+  <Card title="Size Monitoring" icon="chart-line">
+    Monitor database growth and clean up old data
+  </Card>
+  <Card title="Test Restores" icon="rotate-right">
+    Periodically test backup restoration procedures
+  </Card>
+</CardGroup>
+
+<Warning>
+  Always stop services before manually manipulating the database file to prevent corruption.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Setup" icon="server" href="/advanced/backend-setup">
+    Learn about backend installation and configuration
+  </Card>
+  <Card title="Docker Deployment" icon="docker" href="/advanced/docker-deployment">
+    Deploy using Docker containers
+  </Card>
+</CardGroup>

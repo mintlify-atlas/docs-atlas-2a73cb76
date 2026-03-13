@@ -1,0 +1,459 @@
+---
+title: "AI Setup"
+description: "Configure Ollama, Claude, or custom AI providers for intelligent meeting summaries"
+---
+
+Meetily generates AI-powered meeting summaries using your choice of language models. This guide walks you through setting up Ollama (recommended for privacy) and alternative AI providers.
+
+## AI Provider Options
+
+Meetily supports multiple AI providers:
+
+| Provider | Privacy | Cost | Setup Complexity | Best For |
+|----------|---------|------|------------------|----------|
+| **Ollama** | 🟢 100% Local | Free | Medium | Privacy-conscious users, local processing |
+| **Claude** | 🟡 Cloud | Paid | Easy | High-quality summaries, API available |
+| **Groq** | 🟡 Cloud | Paid | Easy | Fast inference, API available |
+| **OpenRouter** | 🟡 Cloud | Paid | Easy | Access to multiple models |
+| **OpenAI** | 🟡 Cloud | Paid | Easy | GPT-4 quality summaries |
+| **Custom Endpoint** | Varies | Varies | Advanced | Self-hosted LLMs, enterprise deployments |
+
+<Info>
+**Recommended**: **Ollama** for complete privacy and no ongoing costs. All processing stays on your machine.
+</Info>
+
+## Setting Up Ollama (Recommended)
+
+Ollama runs large language models locally on your computer — no cloud, no API keys, no data leaving your machine.
+
+<Steps>
+  <Step title="Install Ollama">
+    Download and install Ollama for your platform:
+
+    <Tabs>
+      <Tab title="macOS">
+        **Option 1: Homebrew (recommended)**
+        ```bash
+        brew install ollama
+        ```
+
+        **Option 2: Direct download**
+        1. Visit https://ollama.ai/download
+        2. Download the macOS installer
+        3. Open the `.dmg` and drag Ollama to Applications
+        4. Launch Ollama from Applications
+
+        **Verify installation**:
+        ```bash
+        ollama --version
+        ```
+      </Tab>
+
+      <Tab title="Windows">
+        **Direct download**:
+        1. Visit https://ollama.ai/download
+        2. Download the Windows installer (`.exe`)
+        3. Run the installer and follow prompts
+        4. Ollama starts automatically as a service
+
+        **Verify installation**:
+        ```powershell
+        ollama --version
+        ```
+
+        <Note>
+        Ollama runs as a Windows service in the background. Check the system tray for the Ollama icon.
+        </Note>
+      </Tab>
+
+      <Tab title="Linux">
+        **One-line install**:
+        ```bash
+        curl -fsSL https://ollama.ai/install.sh | sh
+        ```
+
+        **Start Ollama service**:
+        ```bash
+        # Using systemd
+        sudo systemctl start ollama
+        sudo systemctl enable ollama
+
+        # Or run manually
+        ollama serve
+        ```
+
+        **Verify installation**:
+        ```bash
+        ollama --version
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Download a Language Model">
+    Pull a language model for summarization. Recommended models:
+
+    **For most users** (8GB+ RAM):
+    ```bash
+    ollama pull llama3.2
+    ```
+
+    **For high-quality summaries** (16GB+ RAM):
+    ```bash
+    ollama pull llama3.1:8b
+    ```
+
+    **For limited resources** (4GB RAM):
+    ```bash
+    ollama pull phi3.5
+    ```
+
+    **Model comparison**:
+
+    | Model | Size | RAM Required | Quality | Speed |
+    |-------|------|--------------|---------|-------|
+    | `phi3.5` | 2.2 GB | 4 GB | Good | Fast |
+    | `llama3.2` | 4.7 GB | 8 GB | Very Good | Medium |
+    | `llama3.1:8b` | 8.5 GB | 16 GB | Excellent | Slower |
+    | `mistral` | 7.3 GB | 12 GB | Excellent | Medium |
+
+    <Tip>
+    **Download time** — Models range from 2-8 GB. Initial download takes 5-20 minutes depending on your connection. They're cached locally for future use.
+    </Tip>
+
+    **Verify model is ready**:
+    ```bash
+    ollama list
+    ```
+
+    You should see your downloaded model(s) listed.
+  </Step>
+
+  <Step title="Configure Meetily to Use Ollama">
+    Connect Meetily to your local Ollama installation:
+
+    1. Open Meetily and click the **Settings** icon (gear)
+    2. Select **Preferences** or **AI Model Configuration**
+    3. Under **Summarization Model**:
+       - Provider: Select **Ollama**
+       - The Available Ollama Models section appears
+    4. Your downloaded models appear in the list:
+       - Model name (e.g., `llama3.2`)
+       - Size (e.g., `4.7 GB`)
+       - Last modified date
+    5. Click on your preferred model to select it
+    6. The model card highlights with a blue border when selected
+    7. Click **Done** to save
+
+    <Note>
+    **Default Endpoint** — Meetily connects to `http://localhost:11434` by default. If you've configured Ollama on a different port, you can change it in Advanced Settings.
+    </Note>
+  </Step>
+
+  <Step title="Generate Your First Summary">
+    Test the AI summarization:
+
+    1. Record or open a completed meeting in Meetily
+    2. Click **Generate Summary** button in the meeting details
+    3. Wait 10-30 seconds (depending on meeting length and model)
+    4. The summary appears with structured sections:
+       - **Overview** — Brief meeting summary
+       - **Key Points** — Main discussion topics
+       - **Action Items** — Tasks and assignments
+       - **Decisions** — Conclusions reached
+       - **Next Steps** — Follow-up actions
+
+    <Tip>
+    **First Summary** — The first time you generate a summary, Ollama loads the model into memory. Subsequent summaries are faster.
+    </Tip>
+  </Step>
+</Steps>
+
+## Setting Up Cloud AI Providers
+
+If you prefer cloud-based AI (faster, no local GPU needed), configure one of these providers:
+
+<Tabs>
+  <Tab title="Claude (Anthropic)">
+    **Why Claude**: High-quality, context-aware summaries with excellent instruction following.
+
+    1. Get an API key:
+       - Visit https://console.anthropic.com
+       - Sign up or log in
+       - Navigate to **API Keys**
+       - Click **Create Key** and copy it
+
+    2. Configure in Meetily:
+       - Open Settings > **AI Model Configuration**
+       - Provider: Select **Claude**
+       - Model: Choose `claude-3-5-sonnet` or `claude-3-opus`
+       - Click **API Key** field
+       - Click the lock icon to unlock
+       - Paste your API key
+       - Click the lock icon to lock and save
+
+    **Pricing** (as of 2026):
+    - Claude 3.5 Sonnet: ~$0.003 per 1K input tokens
+    - Typical meeting summary: $0.02-0.10 per meeting
+
+    <Warning>
+    **Privacy Consideration** — Using Claude sends your meeting transcripts to Anthropic servers. Only use for non-confidential meetings.
+    </Warning>
+  </Tab>
+
+  <Tab title="Groq">
+    **Why Groq**: Ultra-fast inference with competitive pricing.
+
+    1. Get an API key:
+       - Visit https://console.groq.com
+       - Sign up or log in
+       - Go to **API Keys**
+       - Click **Create API Key** and copy it
+
+    2. Configure in Meetily:
+       - Open Settings > **AI Model Configuration**
+       - Provider: Select **Groq**
+       - Model: Choose `llama-3.3-70b-versatile` (default)
+       - Enter your API key in the locked field
+
+    **Pricing**:
+    - Free tier: 14,400 requests/day
+    - Very cost-effective for regular use
+
+    <Info>
+    Groq offers generous free tier limits — suitable for most individual users without cost.
+    </Info>
+  </Tab>
+
+  <Tab title="OpenRouter">
+    **Why OpenRouter**: Access to multiple models (GPT-4, Claude, Gemini) through one API.
+
+    1. Get an API key:
+       - Visit https://openrouter.ai
+       - Sign up or log in
+       - Navigate to **Keys**
+       - Generate a new key and copy it
+
+    2. Configure in Meetily:
+       - Open Settings > **AI Model Configuration**
+       - Provider: Select **OpenRouter**
+       - Enter your API key
+       - Choose your preferred model from the dropdown
+
+    **Popular models on OpenRouter**:
+    - `anthropic/claude-3.5-sonnet` — High quality
+    - `openai/gpt-4o` — Excellent reasoning
+    - `google/gemini-pro-1.5` — Long context
+
+    **Pricing**: Pay-as-you-go, varies by model (see https://openrouter.ai/models)
+  </Tab>
+
+  <Tab title="OpenAI">
+    **Why OpenAI**: Industry-standard GPT-4 quality summaries.
+
+    1. Get an API key:
+       - Visit https://platform.openai.com
+       - Sign up or log in
+       - Go to **API Keys**
+       - Click **Create new secret key** and copy it
+
+    2. Configure in Meetily:
+       - Open Settings > **AI Model Configuration**
+       - Provider: Select **OpenAI**
+       - Model: Choose `gpt-4o` (recommended) or `gpt-4o-mini`
+       - Enter your API key
+
+    **Pricing**:
+    - GPT-4o: ~$0.005-0.015 per 1K tokens
+    - Typical summary: $0.05-0.20 per meeting
+
+    <Note>
+    OpenAI requires a paid account with credits. Free trial credits expire after initial usage.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Advanced: Custom OpenAI-Compatible Endpoint
+
+For self-hosted LLMs or enterprise deployments, configure a custom endpoint:
+
+<Steps>
+  <Step title="Set Up Your LLM Server">
+    Meetily supports any OpenAI-compatible API endpoint. Popular options:
+
+    **Local options**:
+    - **LM Studio** — GUI for running local models (https://lmstudio.ai)
+    - **text-generation-webui** — Gradio interface (https://github.com/oobabooga/text-generation-webui)
+    - **vLLM** — High-performance inference server
+    - **LocalAI** — OpenAI-compatible API for local models
+
+    **Self-hosted cloud**:
+    - **Hugging Face Text Generation Inference (TGI)**
+    - **NVIDIA Triton Inference Server**
+    - **Custom FastAPI wrapper** around your model
+
+    Ensure your endpoint implements OpenAI's `/v1/chat/completions` API format.
+  </Step>
+
+  <Step title="Configure Custom Endpoint in Meetily">
+    1. Open Settings > **AI Model Configuration**
+    2. Provider: Select **OpenAI** (custom endpoints use OpenAI format)
+    3. In the backend, use Tauri commands to set custom endpoint:
+       - Advanced users: Modify configuration files directly
+       - OR: Use built-in custom endpoint field (if implemented in UI)
+
+    **Configuration format**:
+    ```json
+    {
+      "provider": "openai",
+      "model": "your-model-name",
+      "endpoint": "http://your-server:8000/v1/chat/completions",
+      "api_key": "optional-if-required"
+    }
+    ```
+
+    <Tip>
+    **Testing**: Use `curl` to verify your endpoint before configuring in Meetily:
+    ```bash
+    curl http://localhost:8000/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -d '{"model": "test", "messages": [{"role": "user", "content": "Hi"}]}'
+    ```
+    </Tip>
+  </Step>
+</Steps>
+
+## Troubleshooting AI Setup
+
+<AccordionGroup>
+  <Accordion title="Ollama not connecting">
+    **Symptoms**: "Failed to fetch models" or "Connection refused" error
+
+    **Solutions**:
+    1. **Check Ollama is running**:
+       ```bash
+       # macOS/Linux
+       ps aux | grep ollama
+
+       # Windows
+       tasklist | findstr ollama
+       ```
+    2. **Restart Ollama service**:
+       ```bash
+       # macOS/Linux
+       ollama serve
+
+       # Windows
+       # Restart from system tray icon
+       ```
+    3. **Verify endpoint**:
+       ```bash
+       curl http://localhost:11434/api/tags
+       ```
+       Should return list of models.
+    4. **Check firewall**: Ensure port 11434 is not blocked
+    5. **Try different endpoint**: If running on non-default port, update Meetily settings
+  </Accordion>
+
+  <Accordion title="No models appear in Ollama list">
+    **Cause**: No models downloaded yet
+
+    **Solution**:
+    1. Download a model:
+       ```bash
+       ollama pull llama3.2
+       ```
+    2. Verify download:
+       ```bash
+       ollama list
+       ```
+    3. Refresh Meetily settings (reopen modal)
+    4. Model should now appear in Available Ollama Models section
+  </Accordion>
+
+  <Accordion title="Summary generation fails or times out">
+    **Common causes**:
+    - Model too large for available RAM
+    - Transcription too long for model context
+    - API key invalid or quota exceeded (cloud providers)
+
+    **Solutions**:
+    1. **For Ollama**:
+       - Use smaller model (phi3.5 instead of llama3.1:70b)
+       - Close other applications to free RAM
+       - Check Ollama logs: `ollama logs`
+    2. **For cloud providers**:
+       - Verify API key is correct (unlock and re-enter)
+       - Check account balance/quota
+       - Try shorter meeting (under 1 hour)
+    3. **General**:
+       - Ensure meeting has transcripts (can't summarize empty meeting)
+       - Check network connection (cloud providers)
+       - Try again — occasional timeouts are normal
+  </Accordion>
+
+  <Accordion title="Summaries are low quality or hallucinated">
+    **For Ollama**:
+    - Use larger, more capable model (llama3.1:8b or mistral)
+    - Ensure model fully downloaded (check `ollama list`)
+    - Longer meetings provide more context for better summaries
+
+    **For all providers**:
+    - Improve transcription quality (better microphone, less background noise)
+    - Use higher-quality transcription model (Whisper medium/large)
+    - Verify transcripts are accurate before generating summary
+
+    <Note>
+    **Model Limitations** — Smaller models (< 3B parameters) may struggle with complex meetings. Use llama3.2 (3B) or larger for best results.
+    </Note>
+  </Accordion>
+
+  <Accordion title="API key errors with cloud providers">
+    **"Invalid API key" error**:
+    1. Verify key is copied correctly (no extra spaces)
+    2. Click lock icon to unlock API key field
+    3. Re-paste the key carefully
+    4. Lock and save
+    5. Some providers require key prefix (e.g., `sk-` for OpenAI)
+
+    **"Quota exceeded" error**:
+    - Check account balance on provider dashboard
+    - Free tiers have rate limits (wait or upgrade)
+    - OpenAI requires paid account for continued use
+
+    **"Unauthorized" error**:
+    - API key may be revoked or expired
+    - Generate a new key from provider dashboard
+    - Update in Meetily settings
+  </Accordion>
+</AccordionGroup>
+
+## Customizing Summary Templates
+
+<Note>
+**Coming Soon** — Custom summary templates are available in [Meetily PRO](https://meetily.ai/pro/). The Community Edition uses a standard template optimized for most meetings.
+</Note>
+
+**Current summary structure**:
+1. **Overview** — 2-3 sentence meeting summary
+2. **Key Points** — Bullet list of main topics discussed
+3. **Action Items** — Tasks assigned or commitments made
+4. **Decisions** — Conclusions or agreements reached
+5. **Next Steps** — Follow-up actions or future meetings
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Summaries Feature" icon="sparkles" href="/features/ai-summaries">
+    Learn more about AI-powered summaries and editing
+  </Card>
+  <Card title="Ollama Provider Guide" icon="robot" href="/ai-providers/ollama">
+    Advanced Ollama configuration and troubleshooting
+  </Card>
+  <Card title="Cloud Providers" icon="cloud" href="/ai-providers/claude">
+    Compare cloud AI providers and their features
+  </Card>
+  <Card title="Privacy & Security" icon="shield-check" href="/configuration/privacy">
+    Understand how Meetily protects your data
+  </Card>
+</CardGroup>

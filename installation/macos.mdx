@@ -1,0 +1,305 @@
+---
+title: 'macOS Installation'
+description: 'Install Meetily on macOS with automatic GPU acceleration'
+---
+
+# Installing Meetily on macOS
+
+Meetily runs natively on macOS with automatic Metal GPU acceleration for fast, local transcription. This guide covers installation, setup, and troubleshooting for macOS systems.
+
+## System Requirements
+
+<Info>
+**Minimum Requirements**
+- macOS 13.0 (Ventura) or later
+- Apple Silicon (M1/M2/M3/M4) or Intel processor
+- 8 GB RAM (16 GB recommended)
+- 2 GB free disk space
+- Microphone access
+- Screen recording permission (for system audio capture)
+</Info>
+
+### Recommended Specifications
+
+- **macOS 14.0+** (Sonoma) for best performance
+- **Apple Silicon** (M-series chips) for optimal GPU acceleration
+- **16 GB RAM** for large language models and long meetings
+- **Virtual audio device** (BlackHole) for system audio capture
+
+## Download Meetily
+
+<Steps>
+  <Step title="Visit the releases page">
+    Go to the [Meetily releases page](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest) on GitHub.
+  </Step>
+  
+  <Step title="Download the installer">
+    Download the latest `.dmg` file:
+    - **Apple Silicon (M1/M2/M3/M4)**: `meetily_0.3.0_aarch64.dmg`
+    - **Intel Macs**: `meetily_0.3.0_x64.dmg`
+    
+    <Tip>Most modern Macs use Apple Silicon. To check your processor, click the Apple menu → About This Mac.</Tip>
+  </Step>
+  
+  <Step title="Verify the download (optional)">
+    For added security, you can verify the download signature. The release page includes checksums for all files.
+  </Step>
+</Steps>
+
+## Installation
+
+<Steps>
+  <Step title="Open the DMG file">
+    Double-click the downloaded `.dmg` file. A new window will open showing the Meetily app icon.
+  </Step>
+  
+  <Step title="Drag to Applications">
+    Drag the **Meetily** icon to your **Applications** folder. This installs the app on your system.
+    
+  </Step>
+  
+  <Step title="Eject the disk image">
+    After copying is complete, right-click the Meetily disk image in Finder and select "Eject".
+  </Step>
+</Steps>
+
+## First Launch
+
+<Steps>
+  <Step title="Open Meetily">
+    Open your **Applications** folder and double-click **Meetily**.
+    
+    <Warning>
+    On first launch, you may see a security warning: "Meetily cannot be opened because it is from an unidentified developer."
+    </Warning>
+  </Step>
+  
+  <Step title="Allow the app to run">
+    If you see the security warning:
+    
+    1. Click **OK** to dismiss the warning
+    2. Open **System Settings** → **Privacy & Security**
+    3. Scroll down and click **Open Anyway** next to the Meetily message
+    4. Click **Open** in the confirmation dialog
+    
+    <Tip>This is a normal security feature called Gatekeeper. Future launches won't require this step.</Tip>
+  </Step>
+  
+  <Step title="Grant permissions">
+    Meetily requires two permissions to function:
+    
+    **Microphone Access** (Required)
+    - macOS will prompt you to allow microphone access
+    - Click **OK** to grant permission
+    - This enables recording your voice during meetings
+    
+    **Screen Recording Permission** (Required for system audio)
+    - macOS will prompt you to allow screen recording
+    - Click **Open System Settings**
+    - Enable the toggle next to **Meetily**
+    - **Restart Meetily** after granting this permission
+    
+    <Info>
+    Screen recording permission is needed to capture system audio (e.g., from Zoom, Google Meet). You can still use Meetily for microphone-only recording without this permission.
+    </Info>
+  </Step>
+</Steps>
+
+## Post-Installation Setup
+
+### Setting Up System Audio Capture
+
+To capture both your microphone and system audio (from meeting apps like Zoom, Teams, etc.), you need a virtual audio device:
+
+<Steps>
+  <Step title="Install BlackHole">
+    [BlackHole](https://github.com/ExistentialAudio/BlackHole) is a free, open-source virtual audio driver.
+    
+    1. Download [BlackHole 2ch](https://github.com/ExistentialAudio/BlackHole/releases/latest) (recommended)
+    2. Open the downloaded `.pkg` file
+    3. Follow the installer prompts
+    4. Restart your Mac after installation
+  </Step>
+  
+  <Step title="Configure Audio MIDI Setup">
+    Create a Multi-Output Device to route audio to both your speakers and BlackHole:
+    
+    1. Open **Audio MIDI Setup** (in Applications → Utilities)
+    2. Click the **+** button and select **Create Multi-Output Device**
+    3. Check both your **default speakers** and **BlackHole 2ch**
+    4. Right-click the Multi-Output Device and select **Use This Device For Sound Output**
+  </Step>
+  
+  <Step title="Select audio devices in Meetily">
+    In Meetily settings:
+    - **Microphone**: Select your physical microphone
+    - **System Audio**: Select **BlackHole 2ch**
+    
+    <Tip>You can test your audio setup before starting a recording to ensure both devices are working correctly.</Tip>
+  </Step>
+</Steps>
+
+### Choosing a Transcription Model
+
+Meetily includes several Whisper models for local transcription:
+
+| Model | Size | Speed | Accuracy | Recommended For |
+|-------|------|-------|----------|----------------|
+| **tiny** | 75 MB | Very Fast | Basic | Quick tests |
+| **base** | 142 MB | Fast | Good | Short meetings |
+| **small** | 466 MB | Moderate | Better | Most meetings |
+| **medium** | 1.5 GB | Slower | Great | Long/important meetings |
+| **large-v3** | 3 GB | Slowest | Best | Critical transcription |
+
+<Info>
+Apple Silicon Macs automatically use Metal GPU acceleration, making even larger models fast enough for real-time transcription.
+</Info>
+
+### Configuring AI Summaries
+
+Meetily can generate meeting summaries using various AI providers:
+
+- **Ollama** (recommended): Run models locally with complete privacy
+- **Claude, Groq, OpenRouter**: Cloud-based options for faster summaries
+- **Custom OpenAI endpoint**: Use your own infrastructure
+
+Configure your preferred provider in **Settings** → **AI Provider**.
+
+## Updating Meetily
+
+Meetily includes automatic update checking:
+
+1. When an update is available, you'll see a notification
+2. Click **Download Update** to get the latest version
+3. Once downloaded, click **Install and Restart**
+
+You can also manually check for updates in **Settings** → **About**.
+
+## Troubleshooting
+
+### App Won't Open After Installation
+
+**Issue**: Double-clicking Meetily does nothing or shows an error.
+
+**Solution**:
+1. Open **Terminal** (Applications → Utilities → Terminal)
+2. Run: `xattr -cr /Applications/Meetily.app`
+3. Try launching Meetily again
+
+This removes quarantine attributes that macOS applies to downloaded apps.
+
+### Microphone Not Working
+
+**Issue**: Meetily can't access the microphone.
+
+**Solution**:
+1. Open **System Settings** → **Privacy & Security** → **Microphone**
+2. Ensure **Meetily** is checked in the list
+3. If not listed, click **+** and add Meetily from Applications
+4. Restart Meetily
+
+### System Audio Not Capturing
+
+**Issue**: Only microphone audio is recorded, no system audio from meeting apps.
+
+**Solution**:
+1. Verify **Screen Recording** permission is granted:
+   - System Settings → Privacy & Security → Screen Recording
+   - Meetily should be enabled
+2. Check BlackHole is installed: Open Audio MIDI Setup and look for BlackHole 2ch
+3. Verify Multi-Output Device is configured correctly
+4. In your meeting app (Zoom, Teams), ensure audio output is set to your Multi-Output Device
+
+### Transcription is Slow
+
+**Issue**: Real-time transcription lags behind audio.
+
+**Solution**:
+- **Use a smaller model**: Try switching from `medium` to `small` or `base`
+- **Close other apps**: Free up system resources
+- **Check Activity Monitor**: Ensure Meetily is using GPU acceleration (Metal)
+- **For Intel Macs**: GPU acceleration is limited; consider smaller models
+
+### App Crashes on Launch
+
+**Issue**: Meetily crashes immediately after opening.
+
+**Solution**:
+1. Reset app preferences:
+   ```bash
+   rm -rf ~/Library/Application\ Support/Meetily
+   ```
+2. Restart Meetily
+3. If issue persists, check Console.app for crash logs (search for "Meetily")
+
+### "Cannot Connect to Backend" Error
+
+**Issue**: Meetily shows a connection error on launch.
+
+**Solution**:
+This typically means the internal backend server failed to start:
+1. Check if port 5167 is already in use
+2. Restart Meetily
+3. If issue persists, try reinstalling the app
+
+### Audio Quality Issues
+
+**Issue**: Recorded audio sounds distorted or has clipping.
+
+**Solution**:
+1. Open Meetily **Settings** → **Audio**
+2. Adjust the **Microphone Gain** slider (reduce if clipping)
+3. Adjust **System Audio Gain** if system audio is too loud
+4. Enable **Ducking** to automatically reduce system audio when speaking
+
+## Uninstalling Meetily
+
+To completely remove Meetily from your Mac:
+
+<Steps>
+  <Step title="Remove the application">
+    Drag **Meetily** from your Applications folder to the Trash, then empty the Trash.
+  </Step>
+  
+  <Step title="Remove application data (optional)">
+    To remove recordings, transcripts, and settings:
+    
+    ```bash
+    rm -rf ~/Library/Application\ Support/Meetily
+    rm -rf ~/Library/Caches/Meetily
+    rm -rf ~/Library/Logs/Meetily
+    ```
+  </Step>
+  
+  <Step title="Remove BlackHole (optional)">
+    If you installed BlackHole only for Meetily:
+    1. Download the BlackHole uninstaller from the [releases page](https://github.com/ExistentialAudio/BlackHole/releases/latest)
+    2. Run the uninstaller package
+    3. Restart your Mac
+  </Step>
+</Steps>
+
+## Getting Help
+
+If you encounter issues not covered here:
+
+- **GitHub Issues**: [Report a bug](https://github.com/Zackriya-Solutions/meeting-minutes/issues)
+- **Discord**: Join the [Meetily Discord](https://discord.gg/crRymMQBFH) for community support
+- **Documentation**: Browse the [full documentation](https://meetily.ai/docs)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn how to record your first meeting
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/privacy">
+    Customize Meetily settings for your workflow
+  </Card>
+  <Card title="AI Providers" icon="brain" href="/ai-providers/ollama">
+    Set up AI summaries with Ollama or cloud providers
+  </Card>
+  <Card title="Advanced Features" icon="wand-magic-sparkles" href="/features/recording">
+    Explore advanced recording and transcription options
+  </Card>
+</CardGroup>

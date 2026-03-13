@@ -1,0 +1,443 @@
+---
+title: "Custom Summary Templates"
+description: "Create tailored summary formats for different meeting types with custom template structures"
+---
+
+# Custom Summary Templates
+
+Custom templates allow you to define the structure and content of AI-generated meeting summaries. Instead of generic summaries, you can create templates optimized for standups, client calls, retrospectives, and more.
+
+## Overview
+
+Meetily uses template-driven summary generation:
+
+1. **Template defines structure**: Sections, titles, and instructions for the LLM
+2. **LLM follows template**: AI extracts relevant information into defined sections
+3. **Consistent output**: Every summary follows your preferred format
+
+## Built-in Templates
+
+Meetily ships with two default templates:
+
+### Standard Meeting Notes
+
+General-purpose template for most meetings:
+
+- **Summary**: Executive overview paragraph
+- **Key Decisions**: Important choices made
+- **Action Items**: Tasks with owners and deadlines
+- **Discussion Highlights**: Main topics and insights
+
+### Daily Standup
+
+Time-boxed format for engineering/product teams:
+
+- **Date**: Meeting date (YYYY-MM-DD)
+- **Attendees**: List of participants
+- **Yesterday**: Completed work by owner
+- **Today**: Planned work by owner
+- **Blockers**: Impediments with impact assessment
+- **Notes**: Quick announcements
+
+## Creating Custom Templates
+
+### Template Structure
+
+Templates are JSON files with this schema:
+
+```json
+{
+  "name": "Template Name",
+  "description": "Brief description of template purpose",
+  "sections": [
+    {
+      "title": "Section Title",
+      "instruction": "Instructions for LLM on what to extract",
+      "format": "paragraph|list|string",
+      "item_format": "Optional: Markdown table format for lists"
+    }
+  ]
+}
+```
+
+### Template Fields
+
+#### Root Level
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name shown in UI |
+| `description` | string | Yes | Explanation of template use case |
+| `sections` | array | Yes | List of section definitions |
+
+#### Section Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | Yes | Section heading text |
+| `instruction` | string | Yes | LLM guidance for this section |
+| `format` | string | Yes | One of: `paragraph`, `list`, `string` |
+| `item_format` | string | No | Markdown format hint for list items |
+
+### Format Types
+
+#### `paragraph`
+Free-form prose, multiple sentences or paragraphs.
+
+```json
+{
+  "title": "Discussion Summary",
+  "instruction": "Summarize main topics and key insights",
+  "format": "paragraph"
+}
+```
+
+#### `list`
+Bulleted or numbered items, optionally structured as markdown tables.
+
+```json
+{
+  "title": "Action Items",
+  "instruction": "List all tasks with owners and due dates",
+  "format": "list",
+  "item_format": "| **Owner** | Task | Due Date |\n| --- | --- | --- |"
+}
+```
+
+#### `string`
+Single-line text like dates or short labels.
+
+```json
+{
+  "title": "Meeting Date",
+  "instruction": "YYYY-MM-DD",
+  "format": "string"
+}
+```
+
+## Example Templates
+
+### Client Meeting Template
+
+```json
+{
+  "name": "Client Meeting",
+  "description": "Template for external client discussions",
+  "sections": [
+    {
+      "title": "Client Name",
+      "instruction": "Name of the client/company",
+      "format": "string"
+    },
+    {
+      "title": "Meeting Purpose",
+      "instruction": "Brief statement of meeting objective",
+      "format": "string"
+    },
+    {
+      "title": "Client Requirements",
+      "instruction": "List all requirements, requests, or concerns raised by client",
+      "format": "list"
+    },
+    {
+      "title": "Our Commitments",
+      "instruction": "What we committed to deliver, with timelines",
+      "format": "list",
+      "item_format": "| Commitment | Owner | Deadline |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Next Steps",
+      "instruction": "Follow-up actions for both parties",
+      "format": "list"
+    }
+  ]
+}
+```
+
+### Sprint Retrospective Template
+
+```json
+{
+  "name": "Sprint Retrospective",
+  "description": "Agile sprint review and improvement planning",
+  "sections": [
+    {
+      "title": "Sprint Number",
+      "instruction": "Sprint identifier (e.g., Sprint 42)",
+      "format": "string"
+    },
+    {
+      "title": "What Went Well",
+      "instruction": "Positive outcomes, successes, and wins",
+      "format": "list"
+    },
+    {
+      "title": "What Didn't Go Well",
+      "instruction": "Challenges, issues, and blockers encountered",
+      "format": "list"
+    },
+    {
+      "title": "Action Items for Improvement",
+      "instruction": "Concrete actions to improve in next sprint, with owners",
+      "format": "list",
+      "item_format": "| Action | Owner | Target Date |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Key Metrics",
+      "instruction": "Relevant sprint metrics mentioned (velocity, completed points, etc.)",
+      "format": "paragraph"
+    }
+  ]
+}
+```
+
+### 1-on-1 Meeting Template
+
+```json
+{
+  "name": "1-on-1 Meeting",
+  "description": "One-on-one discussion between manager and direct report",
+  "sections": [
+    {
+      "title": "Participants",
+      "instruction": "Manager and direct report names",
+      "format": "string"
+    },
+    {
+      "title": "Employee Updates",
+      "instruction": "Current work, progress, and concerns shared by employee",
+      "format": "paragraph"
+    },
+    {
+      "title": "Manager Feedback",
+      "instruction": "Feedback, guidance, or direction from manager",
+      "format": "paragraph"
+    },
+    {
+      "title": "Career Development",
+      "instruction": "Discussion about growth, skills, or career path",
+      "format": "paragraph"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "Follow-ups for both parties",
+      "format": "list",
+      "item_format": "| Owner | Action | Due |\n| --- | --- | --- |"
+    }
+  ]
+}
+```
+
+## Installing Custom Templates
+
+### Template Location
+
+Place custom template JSON files in the platform-specific directory:
+
+**macOS**:
+```
+~/Library/Application Support/Meetily/templates/
+```
+
+**Windows**:
+```
+%APPDATA%\Meetily\templates\
+```
+
+**Linux**:
+```
+~/.config/Meetily/templates/
+```
+
+### Installation Steps
+
+<Steps>
+  <Step title="Create templates directory">
+    If it doesn't exist, create the `templates` folder in the location above
+  </Step>
+  <Step title="Create JSON file">
+    Save your template as `template_name.json` (e.g., `client_meeting.json`)
+  </Step>
+  <Step title="Restart Meetily">
+    Custom templates are loaded at application startup
+  </Step>
+  <Step title="Verify in settings">
+    Check Settings → Summary Templates to see your custom template
+  </Step>
+</Steps>
+
+### Template Priority
+
+Meetily loads templates in this order:
+
+1. **Custom templates** (user directory) - highest priority
+2. **Bundled templates** (app resources)
+3. **Built-in templates** (embedded in binary) - fallback
+
+Custom templates with the same filename override bundled/built-in versions.
+
+## Using Templates
+
+### Selecting a Template
+
+Before generating a summary:
+
+1. Open summary generation dialog
+2. Choose template from dropdown
+3. Proceed with summary generation
+
+The LLM will structure output according to your selected template.
+
+### Template Instructions for LLMs
+
+The `instruction` field guides the AI on what to extract. Write clear, specific instructions:
+
+<Tabs>
+  <Tab title="Good Instructions">
+    ✅ "List all action items with assigned owner and deadline. Include reference to transcript segment."
+    
+    ✅ "Summarize technical decisions made, including alternatives considered and rationale."
+    
+    ✅ "Extract all mentioned dates, deadlines, or time commitments."
+  </Tab>
+  <Tab title="Vague Instructions">
+    ❌ "Important stuff"
+    
+    ❌ "Things to do"
+    
+    ❌ "Notes"
+  </Tab>
+</Tabs>
+
+## Advanced Techniques
+
+### Markdown Table Formatting
+
+Use `item_format` for structured list data:
+
+```json
+{
+  "title": "Risks and Mitigations",
+  "instruction": "Identify risks discussed and proposed mitigations",
+  "format": "list",
+  "item_format": "| Risk | Severity | Mitigation | Owner |\n| --- | --- | --- | --- |"
+}
+```
+
+The LLM will format items as markdown tables:
+
+| Risk | Severity | Mitigation | Owner |
+| --- | --- | --- | --- |
+| API rate limits | High | Implement caching layer | Backend team |
+| Data migration delay | Medium | Add 2-week buffer | DevOps |
+
+### Context-Aware Instructions
+
+Reference other sections in instructions:
+
+```json
+{
+  "title": "Follow-up Actions",
+  "instruction": "Based on the decisions and blockers discussed, list concrete follow-up actions with owners. Reference specific decisions from 'Key Decisions' section when applicable.",
+  "format": "list"
+}
+```
+
+### Conditional Sections
+
+Create sections that may be empty if not applicable:
+
+```json
+{
+  "title": "Budget Discussion",
+  "instruction": "If budget or cost was discussed, summarize amounts and decisions. Leave empty if not discussed.",
+  "format": "paragraph"
+}
+```
+
+## Validation and Testing
+
+### Template Validation
+
+Meetily validates templates on load:
+
+- **Required fields**: Ensures `name`, `description`, `sections` exist
+- **Section validation**: Checks each section has `title`, `instruction`, `format`
+- **Format values**: Validates format is one of: `paragraph`, `list`, `string`
+- **Duplicate sections**: Warns if section titles are duplicated
+
+### Testing Templates
+
+1. **Start simple**: Create minimal template with 2-3 sections
+2. **Test with real transcript**: Generate summary on actual meeting
+3. **Review output**: Check if sections populated correctly
+4. **Refine instructions**: Adjust instruction wording based on results
+5. **Add complexity**: Gradually add more sections or formatting
+
+## Community Templates
+
+<Info>
+Share your custom templates with the Meetily community! Submit via GitHub or the Discord server.
+</Info>
+
+Popular community templates may be included in future releases as built-in options.
+
+## Meetily PRO Templates
+
+Meetily PRO includes additional advanced template features:
+
+- **Template marketplace**: Browse and install community templates
+- **Visual template editor**: Create templates without editing JSON
+- **Template variables**: Dynamic fields like `${attendee_count}`
+- **Conditional logic**: Show/hide sections based on meeting content
+- **Multi-format export**: Templates optimized for PDF/DOCX output
+
+[Learn more about PRO](https://meetily.ai/pro/)
+
+## Troubleshooting
+
+### Template Not Appearing
+
+**Issue**: Custom template not showing in UI
+
+**Solutions**:
+- Verify JSON syntax is valid (use a JSON validator)
+- Check file is in correct templates directory
+- Ensure filename ends with `.json`
+- Restart Meetily to reload templates
+
+### Poor Summary Quality
+
+**Issue**: Sections are empty or incorrect
+
+**Solutions**:
+- Make instructions more specific and detailed
+- Use examples in instructions ("e.g., Task, Owner, Due Date")
+- Ensure transcript contains relevant information
+- Try different LLM model (larger models follow instructions better)
+
+### Formatting Issues
+
+**Issue**: Markdown tables not rendering correctly
+
+**Solutions**:
+- Check `item_format` table syntax (must include header separator row)
+- Ensure proper pipe characters (`|`) and dashes (`---`)
+- Test item_format in a markdown preview tool first
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="AI Summaries" icon="sparkles" href="/features/ai-summaries">
+    Generate intelligent meeting summaries
+  </Card>
+  <Card title="Export Options" icon="download" href="/features/export-options">
+    Export summaries in multiple formats
+  </Card>
+  <Card title="LLM Configuration" icon="brain" href="/ai-providers/ollama">
+    Configure AI providers and models
+  </Card>
+  <Card title="Template Reference" icon="book" href="/features/custom-templates">
+    Complete template JSON schema
+  </Card>
+</CardGroup>

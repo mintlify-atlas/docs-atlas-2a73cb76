@@ -1,0 +1,313 @@
+---
+title: "Audio Setup"
+description: "Configure microphone and system audio devices for professional meeting recordings"
+---
+
+Meetily's professional audio engine captures high-quality recordings with intelligent mixing, ducking, and clipping prevention. This guide helps you configure your audio devices for the best results.
+
+## Understanding Meetily's Audio System
+
+Meetily captures two audio streams simultaneously:
+
+1. **Microphone Input** — Your voice and ambient room sound
+2. **System Audio** — Computer audio (music, call participants, application sounds)
+
+These streams are mixed in real-time using professional audio techniques:
+- **RMS-based ducking** — System audio automatically reduces when you speak
+- **Clipping prevention** — Automatic level adjustment prevents distortion
+- **Voice Activity Detection (VAD)** — Only speech segments are transcribed, reducing processing load
+
+<Info>
+**Privacy First** — All audio processing happens locally on your device. No audio data is ever sent to cloud servers.
+</Info>
+
+## Configuring Audio Devices
+
+<Steps>
+  <Step title="Open Audio Settings">
+    Access audio configuration:
+
+    1. Click the **Settings** icon (gear) in the top-right corner
+    2. Select **Audio Device Settings** from the modal
+    3. Or click the **speaker icon** button on the main screen
+
+    The Audio Settings dialog displays:
+    - List of available microphones
+    - List of system audio devices
+    - Audio level meters (when testing)
+    - Backend selection (platform-specific)
+  </Step>
+
+  <Step title="Select Your Microphone">
+    Choose the microphone input device:
+
+    1. Click the **Microphone** dropdown
+    2. Select from available devices:
+       - **Default Microphone** — Uses system default
+       - Specific devices — Built-in, USB, Bluetooth, etc.
+    3. The selected device name appears in the dropdown
+
+    <Tip>
+    **Built-in vs. External** — External USB microphones typically provide better quality than built-in laptop mics. Bluetooth microphones work but may introduce latency.
+    </Tip>
+
+    ### Microphone Best Practices
+
+    **For best results:**
+    - Position microphone 6-12 inches from your mouth
+    - Reduce background noise (close windows, turn off fans)
+    - Use a pop filter for clearer voice capture
+    - Avoid touching or moving the microphone during recording
+
+    **Device recommendations:**
+    - **Budget**: Built-in laptop microphone
+    - **Better**: USB microphones (Blue Yeti, Audio-Technica AT2020USB+)
+    - **Professional**: XLR microphones with audio interface
+  </Step>
+
+  <Step title="Select System Audio Device">
+    Configure system audio capture (optional but recommended):
+
+    1. Click the **System Audio** dropdown
+    2. Select from available devices:
+       - **Default System Audio** — Uses system default output
+       - Specific devices — BlackHole, WASAPI loopback, etc.
+
+    ### Platform-Specific System Audio
+
+    <Tabs>
+      <Tab title="macOS">
+        **Required**: Virtual audio device (BlackHole, Loopback, etc.)
+
+        1. Install BlackHole (free, open-source):
+           ```bash
+           brew install blackhole-2ch
+           ```
+        2. Configure macOS Multi-Output Device:
+           - Open **Audio MIDI Setup** (Applications > Utilities)
+           - Click **+** at bottom-left > **Create Multi-Output Device**
+           - Check both your speakers and **BlackHole 2ch**
+           - Set this as your system output device
+        3. In Meetily, select **BlackHole 2ch** as System Audio
+
+        <Note>
+        **Screen Recording Permission** — macOS requires screen recording permission for system audio capture. Grant this in System Preferences > Security & Privacy.
+        </Note>
+      </Tab>
+
+      <Tab title="Windows">
+        **Built-in**: WASAPI loopback capture (no additional software needed)
+
+        1. In Meetily Audio Settings, select your output device
+        2. Windows automatically captures system audio via WASAPI loopback
+        3. Ensure the device is playing audio (not muted)
+
+        **Alternative**: Use Virtual Audio Cable (VAC) for more control
+        - Download from: https://vb-audio.com/Cable/
+        - Install and set as output device
+        - Route application audio through VAC
+      </Tab>
+
+      <Tab title="Linux">
+        **Options**: PulseAudio or ALSA loopback
+
+        **Using PulseAudio (most common):**
+        ```bash
+        # Load loopback module
+        pactl load-module module-loopback
+        ```
+
+        **Using ALSA:**
+        1. Create loopback in `~/.asoundrc`
+        2. Configure device routing
+        3. Select loopback device in Meetily
+
+        [See detailed Linux audio guide →](/advanced/linux-development)
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Test Audio Levels">
+    Verify your setup is working:
+
+    1. In Audio Settings, click **Test Mic** button (if available)
+    2. Speak into your microphone
+    3. Watch the audio level indicators:
+       - **Green bars**: Good input level (optimal)
+       - **Yellow bars**: High input level (acceptable)
+       - **Red bars**: Clipping/distortion (too loud)
+    4. Adjust system microphone input level if needed
+
+    <Tip>
+    **Optimal Levels** — Aim for green bars that reach 50-70% when speaking normally. This provides good signal-to-noise ratio without clipping.
+    </Tip>
+  </Step>
+
+  <Step title="Configure Audio Backend (Advanced)">
+    Meetily supports multiple audio backends:
+
+    **Available backends:**
+    - **WASAPI** (Windows) — Low latency, high quality
+    - **CoreAudio** (macOS) — Native macOS audio system
+    - **ALSA** (Linux) — Direct hardware access
+    - **PulseAudio** (Linux) — User-friendly audio routing
+
+    The optimal backend is selected automatically, but you can change it:
+
+    1. In Audio Settings, find **Audio Backend** section
+    2. Select your preferred backend from the dropdown
+    3. Click **Apply** and restart Meetily
+
+    <Warning>
+    **Backend Changes** — Changing the audio backend requires app restart. Save any active recordings first.
+    </Warning>
+  </Step>
+</Steps>
+
+## Troubleshooting Audio Issues
+
+<AccordionGroup>
+  <Accordion title="No microphone detected">
+    **Symptoms**: Microphone dropdown is empty or shows no devices
+
+    **Solutions**:
+    1. **Check permissions**:
+       - macOS: System Preferences > Security & Privacy > Microphone
+       - Windows: Settings > Privacy > Microphone
+       - Linux: Check user is in `audio` group
+    2. **Reconnect device**: Unplug and replug USB microphone
+    3. **Restart Meetily**: Click refresh button in Audio Settings
+    4. **Check system settings**: Verify microphone works in other apps
+  </Accordion>
+
+  <Accordion title="System audio not capturing">
+    **macOS**:
+    - Verify BlackHole or virtual device is installed
+    - Check Multi-Output Device configuration in Audio MIDI Setup
+    - Grant screen recording permission to Meetily
+    - Ensure virtual device is selected in System Preferences > Sound
+
+    **Windows**:
+    - Verify audio is playing (unmute system)
+    - Select the correct output device in Audio Settings
+    - Check Windows audio mixer (Right-click speaker icon)
+
+    **Linux**:
+    - Verify PulseAudio loopback module is loaded: `pactl list modules`
+    - Check audio routing: `pactl list sinks` and `pactl list sources`
+    - Try alternative capture method (ALSA vs PulseAudio)
+  </Accordion>
+
+  <Accordion title="Audio is choppy or distorted">
+    **Common causes**:
+    - CPU/GPU overload
+    - Buffer size too small
+    - Multiple audio applications competing
+    - Bluetooth latency issues
+
+    **Solutions**:
+    1. Close other audio applications (music players, browsers)
+    2. Use wired connection instead of Bluetooth
+    3. Reduce transcription model size (use Whisper `tiny` or `base`)
+    4. Increase system audio buffer size (OS audio settings)
+    5. Check CPU usage — transcription is processor-intensive
+  </Accordion>
+
+  <Accordion title="Microphone volume too low">
+    **Boost microphone input**:
+    - **macOS**: System Preferences > Sound > Input > Input volume
+    - **Windows**: Settings > System > Sound > Input device properties > Levels
+    - **Linux**: `alsamixer` or PulseAudio Volume Control
+
+    **Within recording**:
+    - Move closer to microphone (6-12 inches is optimal)
+    - Reduce background noise to improve signal-to-noise ratio
+    - Consider using an external microphone with higher sensitivity
+  </Accordion>
+
+  <Accordion title="Echo or feedback in recording">
+    **Causes**:
+    - System audio looping back through microphone
+    - Speakers too close to microphone
+    - Incorrect virtual device configuration
+
+    **Solutions**:
+    1. Use headphones instead of speakers
+    2. Reduce speaker volume
+    3. Check virtual audio device routing (macOS Multi-Output)
+    4. Disable system audio capture if not needed
+    5. Position microphone away from speakers
+  </Accordion>
+
+  <Accordion title="Bluetooth microphone lag or dropouts">
+    **Known issues**:
+    - Bluetooth introduces 100-300ms latency
+    - Dropouts occur with poor signal strength
+    - Lower audio quality in Bluetooth HFP/HSP modes
+
+    **Recommendations**:
+    - Use wired microphone for critical recordings
+    - Keep Bluetooth device close to computer (< 3 feet)
+    - Avoid Bluetooth for simultaneous input/output (use wired speakers)
+    - Check battery level of Bluetooth device
+
+    [Learn more about Bluetooth limitations →](https://github.com/Zackriya-Solutions/meeting-minutes/blob/main/BLUETOOTH_PLAYBACK_NOTICE.md)
+  </Accordion>
+</AccordionGroup>
+
+## Audio Settings Reference
+
+### Recording Format
+
+Meetily saves recordings in **WAV format** with these specifications:
+- **Sample rate**: 48 kHz
+- **Bit depth**: 16-bit
+- **Channels**: Stereo (mixed from mic + system)
+- **Codec**: PCM (uncompressed)
+
+### Storage Locations
+
+Recordings are stored locally:
+- **macOS**: `~/Library/Application Support/Meetily/recordings/`
+- **Windows**: `%APPDATA%\Meetily\recordings\`
+- **Linux**: `~/.local/share/Meetily/recordings/`
+
+**Approximate storage requirements**:
+- Audio: ~10 MB per minute (WAV format)
+- Transcripts: ~5 KB per minute (JSON format)
+- Summaries: ~2 KB per meeting (text)
+
+### Professional Audio Features
+
+**RMS-based ducking**:
+- System audio reduces by 6-12 dB when microphone is active
+- Prevents system audio from drowning out speech
+- Configurable threshold (default: -40 dB RMS)
+
+**Clipping prevention**:
+- Automatic gain control (AGC) prevents distortion
+- Hard limiter at -1 dB prevents digital clipping
+- Headroom maintained for transient peaks
+
+**Voice Activity Detection (VAD)**:
+- Detects speech vs silence/noise
+- Only speech segments sent to transcription engine
+- Reduces processing load by ~70%
+- Configurable sensitivity threshold
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Setup" icon="sparkles" href="/quickstart/ai-setup">
+    Configure Ollama or other AI providers for meeting summaries
+  </Card>
+  <Card title="Advanced Audio Mixing" icon="sliders" href="/configuration/audio-mixing">
+    Deep dive into professional audio mixing features
+  </Card>
+  <Card title="System Audio Guides" icon="speaker-wave" href="/configuration/system-audio">
+    Platform-specific system audio configuration
+  </Card>
+  <Card title="Recording Features" icon="circle-play" href="/features/recording">
+    Explore all recording capabilities and workflows
+  </Card>
+</CardGroup>

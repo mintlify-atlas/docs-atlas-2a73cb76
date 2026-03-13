@@ -1,0 +1,573 @@
+---
+title: Contributing
+description: Guidelines for contributing to the Meetily project
+---
+
+# Contributing to Meetily
+
+Thank you for your interest in contributing to Meetily! This guide will help you get started with contributing to the project.
+
+<Info>
+  Meetily is a privacy-first AI meeting assistant. When contributing, please keep privacy and local-first principles at the forefront of your work.
+</Info>
+
+## Getting Started
+
+### Prerequisites
+
+Before you begin, make sure you have:
+
+- Git installed
+- Development environment set up (see [Building from Source](/advanced/building-from-source))
+- Familiarity with the [System Architecture](/advanced/architecture)
+- A GitHub account
+
+### Fork and Clone
+
+1. **Fork the repository** on GitHub
+
+2. **Clone your fork:**
+
+```bash
+git clone https://github.com/YOUR_USERNAME/meetily.git
+cd meetily
+```
+
+3. **Add the original repository as upstream:**
+
+```bash
+git remote add upstream https://github.com/Zackriya-Solutions/meetily.git
+```
+
+## Development Workflow
+
+### Branch Strategy
+
+Meetily uses a structured branching approach:
+
+- **`main`** - Production branch (stable releases)
+- **`devtest`** - Development and testing branch
+- **Feature branches** - Created from `devtest` for new work
+
+### Creating a Feature Branch
+
+<Steps>
+
+<Step title="Sync with devtest">
+  
+  Always start from the latest `devtest` branch:
+  
+  ```bash
+  git checkout devtest
+  git pull upstream devtest
+  ```
+  
+</Step>
+
+<Step title="Create your branch">
+  
+  Use descriptive branch names:
+  
+  ```bash
+  git checkout -b feature/your-feature-name
+  # or
+  git checkout -b fix/bug-description
+  ```
+  
+</Step>
+
+<Step title="Make your changes">
+  
+  Write code, update tests, and add documentation as needed.
+  
+</Step>
+
+</Steps>
+
+## Development Process
+
+### Before You Start
+
+<AccordionGroup>
+
+<Accordion title="Check Existing Issues">
+
+Before starting work:
+
+1. Search [existing issues](https://github.com/Zackriya-Solutions/meetily/issues)
+2. Check if someone is already working on it
+3. Comment on the issue to let others know you're working on it
+
+</Accordion>
+
+<Accordion title="Create a New Issue">
+
+If no issue exists, create one with:
+
+- **Clear title** - Descriptive and concise
+- **Detailed description** - What, why, and how
+- **Steps to reproduce** (for bugs)
+- **Expected behavior**
+- **Screenshots** (if applicable)
+- **Appropriate labels** (bug, enhancement, documentation, etc.)
+
+**Example Bug Report:**
+
+```markdown
+## Description
+Transcription stops after 5 minutes of recording
+
+## Steps to Reproduce
+1. Start a new recording
+2. Let it run for 5+ minutes
+3. Observe transcription stops updating
+
+## Expected Behavior
+Transcription should continue throughout the recording
+
+## Environment
+- OS: macOS 14.1
+- Meetily Version: 0.1.0
+- Model: whisper-small
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+### While Working
+
+<Steps>
+
+<Step title="Write Clean Code">
+  
+  Follow the project's code style:
+  
+  - Use meaningful variable and function names
+  - Keep functions small and focused
+  - Add comments for complex logic
+  - Follow existing patterns in the codebase
+  
+</Step>
+
+<Step title="Update Tests">
+  
+  - Write unit tests for new features
+  - Update existing tests when modifying code
+  - Ensure all tests pass before submitting
+  - Include integration tests for complex features
+  
+</Step>
+
+<Step title="Update Documentation">
+  
+  - Update relevant documentation for new features
+  - Keep README up to date
+  - Document API changes
+  - Add inline code comments for complex sections
+  
+</Step>
+
+</Steps>
+
+## Commit Guidelines
+
+### Commit Message Format
+
+Use conventional commit messages:
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types:**
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation changes
+- `style` - Code style changes (formatting, no logic change)
+- `refactor` - Code refactoring
+- `test` - Adding or updating tests
+- `chore` - Maintenance tasks
+
+**Examples:**
+
+<CodeGroup>
+
+```git Feature
+feat(audio): add support for Vulkan GPU acceleration
+
+Implements Vulkan backend for GPU-accelerated transcription
+on AMD and Intel GPUs. Includes auto-detection and fallback
+to CPU if Vulkan SDK is not available.
+
+Closes #123
+```
+
+```git Bug Fix
+fix(transcription): prevent memory leak in ring buffer
+
+Fixed issue where audio chunks were not being properly
+released after transcription, causing memory growth
+over long recordings.
+
+Fixes #456
+```
+
+```git Documentation
+docs(api): update transcription engine API docs
+
+Added examples for batch transcription and improved
+descriptions of model loading behavior.
+```
+
+</CodeGroup>
+
+### Commit Best Practices
+
+- Make small, focused commits
+- Each commit should represent a logical change
+- Write clear, descriptive commit messages
+- Reference issue numbers when applicable
+
+## Pull Request Process
+
+### Creating a Pull Request
+
+<Steps>
+
+<Step title="Push your branch">
+  
+  ```bash
+  git push origin feature/your-feature-name
+  ```
+  
+</Step>
+
+<Step title="Create PR">
+  
+  1. Go to the repository on GitHub
+  2. Click "New Pull Request"
+  3. Select `devtest` as the base branch
+  4. Select your feature branch as the compare branch
+  5. Fill out the PR template
+  
+</Step>
+
+<Step title="Link the issue">
+  
+  Reference the related issue in your PR description:
+  
+  ```markdown
+  Fixes #123
+  Closes #456
+  Related to #789
+  ```
+  
+</Step>
+
+</Steps>
+
+### Pull Request Template
+
+Use this template for your PRs:
+
+```markdown
+## Description
+[Describe your changes here]
+
+## Related Issue
+Fixes #[issue number]
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Documentation update
+- [ ] Performance improvement
+- [ ] Code refactoring
+- [ ] Other (please describe)
+
+## Testing
+- [ ] Unit tests added/updated
+- [ ] Manual testing performed
+- [ ] All tests pass
+
+## Documentation
+- [ ] Documentation updated
+- [ ] No documentation needed
+
+## Checklist
+- [ ] Code follows project style
+- [ ] Self-reviewed the code
+- [ ] Added comments for complex code
+- [ ] Updated README if needed
+- [ ] No breaking changes (or documented)
+```
+
+### Review Process
+
+<AccordionGroup>
+
+<Accordion title="What to Expect">
+
+1. **Initial Review** - A maintainer will review within 2-3 days
+2. **CI Checks** - Automated tests must pass
+3. **Code Review** - At least one maintainer approval required
+4. **Revisions** - Address any feedback or requested changes
+5. **Merge** - Once approved, maintainers will merge to `devtest`
+
+</Accordion>
+
+<Accordion title="Responding to Feedback">
+
+- Be open to suggestions and constructive criticism
+- Ask questions if feedback is unclear
+- Make requested changes promptly
+- Keep the PR up to date with `devtest`
+- Respond to all comments before requesting re-review
+
+</Accordion>
+
+<Accordion title="Keeping Your PR Updated">
+
+If `devtest` has moved ahead:
+
+```bash
+git checkout devtest
+git pull upstream devtest
+git checkout feature/your-feature-name
+git rebase devtest
+git push --force-with-lease origin feature/your-feature-name
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Code Style
+
+### Rust Code
+
+- Follow Rust standard formatting (`cargo fmt`)
+- Use `clippy` for linting (`cargo clippy`)
+- Prefer explicit types for public APIs
+- Use meaningful variable names
+- Add doc comments for public functions
+
+**Example:**
+
+```rust
+/// Starts audio recording with the specified devices.
+///
+/// # Arguments
+/// * `mic_device_name` - Optional name of the microphone device
+/// * `system_device_name` - Optional name of the system audio device
+///
+/// # Returns
+/// Result containing () on success or error message on failure
+#[tauri::command]
+pub async fn start_recording(
+    mic_device_name: Option<String>,
+    system_device_name: Option<String>,
+) -> Result<(), String> {
+    // Implementation
+}
+```
+
+### TypeScript/JavaScript Code
+
+- Use TypeScript for type safety
+- Follow ESLint configuration
+- Use async/await over promises
+- Prefer functional components (React)
+- Use meaningful component and variable names
+
+**Example:**
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+interface RecordingOptions {
+  micDeviceName?: string;
+  systemDeviceName?: string;
+  meetingName: string;
+}
+
+export async function startRecording(
+  options: RecordingOptions
+): Promise<void> {
+  try {
+    await invoke('start_recording', {
+      mic_device_name: options.micDeviceName,
+      system_device_name: options.systemDeviceName,
+      meeting_name: options.meetingName,
+    });
+  } catch (error) {
+    console.error('Failed to start recording:', error);
+    throw error;
+  }
+}
+```
+
+## Testing
+
+### Running Tests
+
+<CodeGroup>
+
+```bash Frontend Tests
+cd frontend
+pnpm test
+```
+
+```bash Rust Tests
+cd frontend/src-tauri
+cargo test
+```
+
+```bash Backend Tests
+cd backend
+pytest
+```
+
+</CodeGroup>
+
+### Writing Tests
+
+**Rust Unit Tests:**
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audio_mixing() {
+        let mixer = ProfessionalAudioMixer::new();
+        // Test implementation
+    }
+}
+```
+
+**TypeScript Tests:**
+
+```typescript
+import { render, screen } from '@testing-library/react';
+import { RecordingButton } from './RecordingButton';
+
+describe('RecordingButton', () => {
+  it('renders start recording button', () => {
+    render(<RecordingButton />);
+    expect(screen.getByText('Start Recording')).toBeInTheDocument();
+  });
+});
+```
+
+## Areas to Contribute
+
+### Good First Issues
+
+Look for issues labeled `good first issue` for beginner-friendly tasks:
+
+- Documentation improvements
+- UI/UX enhancements
+- Bug fixes
+- Test coverage improvements
+
+### High-Impact Areas
+
+<CardGroup cols={2}>
+
+<Card title="Audio Processing" icon="waveform">
+  Improve audio capture, mixing, and VAD algorithms
+</Card>
+
+<Card title="Transcription" icon="message">
+  Enhance transcription accuracy and performance
+</Card>
+
+<Card title="UI/UX" icon="paintbrush">
+  Improve user interface and user experience
+</Card>
+
+<Card title="Platform Support" icon="desktop">
+  Add support for more platforms and devices
+</Card>
+
+</CardGroup>
+
+## Getting Help
+
+<AccordionGroup>
+
+<Accordion title="Ask Questions">
+
+- Create a [GitHub Discussion](https://github.com/Zackriya-Solutions/meetily/discussions)
+- Comment on relevant issues
+- Join our community chat (if available)
+
+</Accordion>
+
+<Accordion title="Report Bugs">
+
+- Check existing issues first
+- Create detailed bug reports
+- Include reproduction steps
+- Provide system information
+
+</Accordion>
+
+<Accordion title="Request Features">
+
+- Search existing feature requests
+- Create detailed proposals
+- Explain the use case
+- Consider implementation complexity
+
+</Accordion>
+
+</AccordionGroup>
+
+## Code of Conduct
+
+We are committed to providing a welcoming and inclusive environment:
+
+- Be respectful and considerate
+- Accept constructive criticism gracefully
+- Focus on what's best for the community
+- Show empathy towards other community members
+
+## License
+
+By contributing to Meetily, you agree that your contributions will be licensed under the project's MIT License.
+
+<Info>
+  All contributors retain copyright to their contributions while granting the project the right to distribute the code under the MIT License.
+</Info>
+
+## Recognition
+
+Contributors are recognized in:
+
+- GitHub contributors list
+- Release notes for significant contributions
+- Project documentation (for major features)
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="View Issues" icon="github" href="https://github.com/Zackriya-Solutions/meetily/issues">
+  Find something to work on
+</Card>
+
+<Card title="Architecture" icon="sitemap" href="/advanced/architecture">
+  Understand the system architecture
+</Card>
+
+</CardGroup>
+
+Thank you for contributing to Meetily! 🎉

@@ -1,0 +1,438 @@
+---
+title: 'OpenAI'
+description: 'Configure OpenAI GPT models for meeting summaries'
+icon: 'microchip'
+---
+
+OpenAI provides industry-leading GPT models for generating high-quality meeting summaries with excellent reasoning and natural language understanding.
+
+## Overview
+
+OpenAI's GPT models offer:
+- **Cutting-edge performance** with GPT-4 and GPT-5 series
+- **Large context windows** (up to 128K tokens)
+- **Reasoning models** (o1, o3 series) for complex analysis
+- **Fast inference** with optimized infrastructure
+- **Multimodal capabilities** (future: analyze meeting screenshots)
+
+**Best for:** High-quality summaries, complex reasoning, fast results
+
+## Prerequisites
+
+<Card title="OpenAI Account Required" icon="user">
+  You need an OpenAI account with API access and credits to use OpenAI models with Meetily.
+</Card>
+
+## Setup
+
+<Steps>
+  <Step title="Create OpenAI Account">
+    1. Visit [platform.openai.com](https://platform.openai.com)
+    2. Sign up or log in to your account
+    3. Add payment method (required for API access)
+  </Step>
+
+  <Step title="Generate API Key">
+    1. Navigate to **API Keys** in your OpenAI Dashboard
+    2. Click **Create new secret key**
+    3. Name your key (e.g., "Meetily")
+    4. Set permissions (default is fine)
+    5. Copy the API key (starts with `sk-`)
+    
+    <Warning>
+      Save your API key immediately. It won't be displayed again.
+    </Warning>
+  </Step>
+
+  <Step title="Configure in Meetily">
+    1. Open **Settings > Summary** in Meetily
+    2. Select **OpenAI** from the Summarization Model dropdown
+    3. The API Key field will appear
+  </Step>
+
+  <Step title="Enter API Key">
+    1. Paste your API key into the **API Key** field
+    2. Click the lock icon to secure it
+    3. Select your preferred GPT model
+    4. Click **Done** to save
+  </Step>
+</Steps>
+
+## Available Models
+
+Meetily automatically fetches available models from your OpenAI account. If API key is not provided or fetch fails, these fallback models are shown:
+
+### GPT-5 Series (Latest)
+
+**GPT-5**
+- **Model ID:** `gpt-5`
+- **Best for:** Most advanced reasoning and generation
+- **Context window:** 128K tokens
+- **Speed:** Fast
+
+**GPT-5 Mini**
+- **Model ID:** `gpt-5-mini`
+- **Best for:** Cost-effective with great quality
+- **Context window:** 128K tokens
+- **Speed:** Very fast
+
+### GPT-4o Series
+
+**GPT-4o (Omni)**
+- **Model ID:** `gpt-4o` or `gpt-4o-2024-11-20`
+- **Best for:** Balanced performance and cost
+- **Context window:** 128K tokens
+- **Speed:** Fast
+- **Use case:** Most meeting summaries
+
+**GPT-4o Mini**
+- **Model ID:** `gpt-4o-mini-2024-07-18`
+- **Best for:** Quick, cost-effective summaries
+- **Context window:** 128K tokens
+- **Speed:** Fastest
+- **Use case:** Daily standups, short meetings
+
+### GPT-4.1 Series
+
+**GPT-4.1**
+- **Model ID:** `gpt-4.1-2025-04-14`
+- **Best for:** Enhanced reasoning capabilities
+- **Context window:** 128K tokens
+
+**GPT-4.1 Nano**
+- **Model ID:** `gpt-4.1-nano-2025-04-14`
+- **Best for:** Ultra-fast, lightweight processing
+
+**GPT-4.1 Mini**
+- **Model ID:** `gpt-4.1-mini-2025-04-14`
+- **Best for:** Budget-friendly quality
+
+### Reasoning Models (o-series)
+
+**o3**
+- **Model ID:** `o3-2025-04-16`
+- **Best for:** Complex analysis and reasoning
+- **Use case:** Strategic meetings, decision analysis
+
+**o3 Mini**
+- **Model ID:** `o3-mini-2025-01-31`
+- **Best for:** Fast reasoning tasks
+
+**o1**
+- **Model ID:** `o1-2024-12-17`
+- **Best for:** Advanced problem-solving
+
+**o1 Mini**
+- **Model ID:** `o1-mini-2024-09-12`
+- **Best for:** Quick reasoning on a budget
+
+### Legacy Models
+
+- **GPT-4 Turbo:** `gpt-4-turbo`, `gpt-4-turbo-2024-04-09`
+- **GPT-4:** `gpt-4`
+- **GPT-3.5 Turbo:** `gpt-3.5-turbo`, `gpt-3.5-turbo-0125`
+
+<Info>
+  Meetily filters the model list to show only chat-capable models. Embedding, TTS, and Whisper models are automatically excluded.
+</Info>
+
+## API Key Management
+
+### Storing Your API Key
+
+Meetily stores your OpenAI API key securely:
+
+1. **Local database storage** - Saved in SQLite database
+2. **Encrypted fields** - API keys are stored in encrypted columns
+3. **No cloud sync** - Keys never leave your machine except for API calls
+4. **Lock protection** - UI prevents accidental editing
+
+### Security Features
+
+```typescript
+// API key is only used for:
+// 1. Fetching available models (optional)
+// 2. Generating summaries via OpenAI API
+
+// API key is NEVER:
+// - Logged or printed
+// - Sent to Meetily servers
+// - Shared with third parties
+```
+
+### Updating Your API Key
+
+<Steps>
+  <Step title="Unlock the Field">
+    Click the **lock icon** next to the API Key field in Settings > Summary.
+  </Step>
+
+  <Step title="Replace Key">
+    Delete the old key and paste your new API key.
+  </Step>
+
+  <Step title="Lock and Save">
+    Click the **lock icon** again, then click **Done** to save.
+  </Step>
+</Steps>
+
+### Viewing Your API Key
+
+Click the **eye icon** next to the API Key field to toggle visibility between masked (`••••••••`) and plain text.
+
+## Configuration
+
+### Model Selection Strategy
+
+**For most users:**
+```
+Recommended: gpt-4o or gpt-4o-mini
+- Excellent quality
+- Fast response times
+- Cost-effective
+```
+
+**For budget-conscious users:**
+```
+Recommended: gpt-4o-mini or gpt-3.5-turbo
+- Lower cost
+- Still high quality
+- Fastest responses
+```
+
+**For complex meetings:**
+```
+Recommended: o1, o3, or gpt-5
+- Advanced reasoning
+- Deep analysis
+- Best for strategic decisions
+```
+
+### Context Window Utilization
+
+OpenAI's 128K token context window means:
+- **1-hour meetings** typically fit entirely
+- **2-3 hour meetings** may require chunking
+- **Better coherence** with full context
+
+**Token usage estimates:**
+- 30-minute meeting: ~5,000 tokens
+- 1-hour meeting: ~10,000 tokens
+- 2-hour meeting: ~20,000 tokens
+- 4-hour meeting: ~40,000 tokens (may need chunking)
+
+## Usage Examples
+
+### Basic Summary Generation
+
+1. Record a meeting in Meetily
+2. Stop the recording
+3. Summary auto-generates (if enabled)
+4. OpenAI processes the transcript:
+   - Extracts key points
+   - Identifies decisions and action items
+   - Generates structured summary
+   - Returns results in seconds
+
+### Model Caching
+
+Meetily caches the list of available models for 5 minutes:
+
+```rust
+// Backend caches models to reduce API calls
+const CACHE_TTL_SECS: u64 = 300; // 5 minutes
+
+// Cached models include:
+// - Only chat-capable models
+// - Filtered by permissions
+// - Sorted by relevance
+```
+
+## Pricing
+
+<Warning>
+  OpenAI is a paid service. Costs vary by model and usage. Monitor your usage in the OpenAI Dashboard.
+</Warning>
+
+**Estimated costs per meeting** (approximate, as of 2024):
+
+| Meeting Length | Tokens | GPT-4o Mini | GPT-4o | GPT-5 | o1/o3 |
+|---------------|--------|-------------|--------|-------|-------|
+| 30 minutes | ~5K | $0.01 | $0.03 | $0.05 | $0.10 |
+| 1 hour | ~10K | $0.02 | $0.06 | $0.10 | $0.20 |
+| 2 hours | ~20K | $0.04 | $0.12 | $0.20 | $0.40 |
+| 4 hours | ~40K | $0.08 | $0.24 | $0.40 | $0.80 |
+
+<Info>
+  These are rough estimates. Check [OpenAI's pricing page](https://openai.com/api/pricing/) for current rates.
+</Info>
+
+### Cost Optimization
+
+<CardGroup cols={2}>
+  <Card title="Use Mini Models" icon="coins">
+    Start with `gpt-4o-mini` for routine meetings. Upgrade to `gpt-4o` or `gpt-5` for important meetings.
+  </Card>
+  
+  <Card title="Selective Summaries" icon="filter">
+    Disable auto-summary and manually generate summaries only for key meetings.
+  </Card>
+  
+  <Card title="Monitor Usage" icon="chart-line">
+    Check your OpenAI Dashboard regularly to track spending and usage patterns.
+  </Card>
+  
+  <Card title="Set Budgets" icon="wallet">
+    Configure usage limits in your OpenAI account to prevent unexpected charges.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Invalid API Key
+
+**Error:** "Invalid API key" or "Incorrect API key provided"
+
+**Solution:**
+1. Verify the key starts with `sk-`
+2. Check for extra spaces or line breaks when pasting
+3. Ensure the key hasn't been revoked in OpenAI Dashboard
+4. Generate a new key if needed
+
+### Insufficient Credits
+
+**Error:** "You exceeded your current quota"
+
+**Solution:**
+1. **Add payment method** in OpenAI Dashboard
+2. **Check billing** - Ensure you have available credits
+3. **Upgrade plan** if on free trial (free trial is limited)
+4. **Wait for reset** if you hit rate limits
+
+### Rate Limit Errors
+
+**Error:** "Rate limit reached" or "429 Too Many Requests"
+
+**Solution:**
+1. **Tier-based limits** - Higher usage tiers get higher rate limits
+2. **Wait and retry** - Rate limits reset after a period (usually per minute)
+3. **Upgrade tier** - Increase your usage tier in OpenAI Dashboard
+4. **Batch processing** - Avoid generating multiple summaries simultaneously
+
+### Model Not Available
+
+**Error:** Model missing from dropdown or "model not found"
+
+**Solution:**
+1. **Check access** - Some models require special access (e.g., o-series)
+2. **Refresh models** - Switch providers and back to OpenAI to refresh the list
+3. **Use fallback** - If API fetch fails, fallback models are shown
+4. **Update Meetily** - Ensure you're on the latest version
+
+### Connection Issues
+
+**Error:** "Failed to connect to OpenAI API"
+
+**Solution:**
+1. **Check internet connection**
+2. **Verify firewall** - Allow HTTPS to `api.openai.com`
+3. **Check OpenAI status** - Visit [status.openai.com](https://status.openai.com)
+4. **Use VPN** - If in a region with restrictions, use a VPN
+
+### Slow Performance
+
+**Issue:** Summary takes longer than expected
+
+**Possible causes:**
+- Using reasoning models (o1/o3) which are slower
+- Very long meetings requiring chunking
+- High API load during peak hours
+
+**Solution:**
+1. **Switch to faster models** - Use `gpt-4o-mini` instead of reasoning models
+2. **Off-peak processing** - Generate summaries during low-traffic times
+3. **Check status page** - Verify no ongoing incidents
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Rotate Keys Regularly">
+    Generate new API keys every 90 days and revoke old ones in the OpenAI Dashboard.
+  </Step>
+
+  <Step title="Use Project Keys">
+    Create project-specific keys in OpenAI Dashboard for better isolation and tracking.
+  </Step>
+
+  <Step title="Monitor Usage">
+    Enable usage notifications in OpenAI Dashboard to detect unusual activity.
+  </Step>
+
+  <Step title="Set Budget Limits">
+    Configure hard and soft limits in billing settings to prevent unexpected charges.
+  </Step>
+
+  <Step title="Never Share Keys">
+    Never commit API keys to version control or share them. Meetily stores them locally.
+  </Step>
+</Steps>
+
+## Advanced Features
+
+### Dynamic Model Fetching
+
+Meetily automatically fetches available models based on your API key:
+
+```typescript
+// Backend code fetches and caches models
+const response = await fetch('https://api.openai.com/v1/models', {
+  headers: {
+    'Authorization': `Bearer ${apiKey}`
+  }
+});
+
+// Filters to show only chat models:
+// - gpt-* series
+// - o1-*, o3-*, o4-* reasoning models
+// Excludes: embeddings, TTS, Whisper, DALL-E
+```
+
+### Model Filtering
+
+The backend automatically filters models to show only those suitable for chat:
+
+```rust
+fn is_chat_model(model_id: &str) -> bool {
+    let id = model_id.to_lowercase();
+    (id.starts_with("gpt-") ||
+     id.starts_with("o1-") ||
+     id.starts_with("o3-") ||
+     id.starts_with("o4-"))
+    && !id.contains("embedding")
+    && !id.contains("tts")
+    && !id.contains("whisper")
+    && !id.contains("dall-e")
+}
+```
+
+## Comparing with Other Providers
+
+| Feature | OpenAI | Claude | Ollama | Groq |
+|---------|--------|--------|--------|------|
+| **Context Window** | 128K | 200K | 4-32K | 32K |
+| **Privacy** | Cloud | Cloud | Local | Cloud |
+| **Cost** | $$ | $$ | Free | $ |
+| **Speed** | Very Fast | Fast | Medium | Fastest |
+| **Quality** | Excellent | Excellent | Good | Very Good |
+| **Reasoning** | o-series | Native | Limited | Limited |
+| **Best For** | General purpose | Nuanced | Privacy | Speed |
+
+## Related Resources
+
+- [OpenAI Platform](https://platform.openai.com)
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [OpenAI Pricing](https://openai.com/api/pricing/)
+- [OpenAI Status](https://status.openai.com)
+- [Meetily Summary Settings](/quickstart/ai-setup)
+- [Claude Provider](/ai-providers/claude) - Alternative cloud provider
+- [Custom OpenAI Endpoint](/ai-providers/custom-endpoint) - Self-hosted alternative

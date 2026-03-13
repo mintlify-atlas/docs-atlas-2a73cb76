@@ -1,0 +1,286 @@
+---
+title: Transcription
+description: Real-time speech-to-text transcription powered by local AI models
+---
+
+Meetily provides fast, accurate, and completely private transcription using Whisper models running locally on your device. No audio ever leaves your computer.
+
+## How It Works
+
+As you record, Meetily continuously transcribes your audio in real-time:
+
+<Steps>
+  <Step title="Voice Activity Detection">
+    Audio is analyzed to detect speech segments, filtering out silence and background noise.
+  </Step>
+  
+  <Step title="Local Processing">
+    Speech segments are sent to the local Whisper model for transcription.
+  </Step>
+  
+  <Step title="Live Updates">
+    Transcripts appear in the main panel as words are transcribed, with timestamps and confidence scores.
+  </Step>
+  
+  <Step title="Auto-Scroll">
+    The view automatically scrolls to show the latest transcription as you speak.
+  </Step>
+</Steps>
+
+## Transcription Models
+
+Meetily supports multiple Whisper model sizes, allowing you to balance speed and accuracy:
+
+<Tabs>
+  <Tab title="Tiny">
+    **Fastest** - Best for testing and quick notes
+    - Size: ~75 MB
+    - Speed: Very fast
+    - Accuracy: Basic
+    - Use case: Quick meetings, draft notes
+  </Tab>
+  
+  <Tab title="Base">
+    **Balanced** - Good for most meetings
+    - Size: ~145 MB
+    - Speed: Fast
+    - Accuracy: Good
+    - Use case: General meetings, conversations
+  </Tab>
+  
+  <Tab title="Small">
+    **Recommended** - Excellent balance
+    - Size: ~466 MB
+    - Speed: Moderate
+    - Accuracy: Very good
+    - Use case: Important meetings, presentations
+  </Tab>
+  
+  <Tab title="Medium">
+    **High Accuracy** - Best for critical content
+    - Size: ~1.5 GB
+    - Speed: Slower
+    - Accuracy: Excellent
+    - Use case: Legal, medical, detailed discussions
+  </Tab>
+  
+  <Tab title="Large">
+    **Maximum Accuracy** - Professional grade
+    - Size: ~3 GB
+    - Speed: Slowest
+    - Accuracy: Best possible
+    - Use case: Transcripts for publication, archival
+  </Tab>
+</Tabs>
+
+<Info>
+  You can change the transcription model in **Settings → Transcription**. The model will be downloaded automatically on first use.
+</Info>
+
+## GPU Acceleration
+
+For faster transcription, Meetily automatically detects and uses your GPU:
+
+<CardGroup cols={3}>
+  <Card title="macOS" icon="apple">
+    **Metal + CoreML**
+    
+    Automatically enabled on Apple Silicon and Intel Macs with Metal support.
+    
+    5-10x faster than CPU
+  </Card>
+  
+  <Card title="Windows" icon="windows">
+    **CUDA or Vulkan**
+    
+    - NVIDIA GPUs: CUDA acceleration
+    - AMD/Intel GPUs: Vulkan acceleration
+    
+    3-8x faster than CPU
+  </Card>
+  
+  <Card title="Linux" icon="linux">
+    **CUDA or Vulkan**
+    
+    Configure via GPU settings in the app.
+    
+    Falls back to CPU if GPU unavailable
+  </Card>
+</CardGroup>
+
+## Real-Time Transcription View
+
+The transcript panel shows your live transcription with helpful features:
+
+### Timestamps
+Every transcript segment includes a timestamp showing when it was spoken (e.g., `[02:45]`).
+
+### Confidence Indicators
+Hover over timestamps to see transcription confidence scores:
+- **High confidence** (90%+): Green indicator
+- **Medium confidence** (70-89%): Yellow indicator  
+- **Low confidence** (less than 70%): Red indicator
+
+<Tip>
+  Low confidence scores often indicate unclear audio, background noise, or technical jargon. Consider reviewing these segments manually.
+</Tip>
+
+### Text Cleaning
+Meetily automatically removes filler words like "uh", "um", "er", and "hmm" for cleaner, more readable transcripts.
+
+### Auto-Scroll
+The transcript view automatically scrolls to show new content as it appears. Scroll up to review earlier content - auto-scroll pauses when you're not at the bottom.
+
+## Language Support
+
+Whisper models support 99+ languages out of the box:
+
+<Accordion title="Supported Languages">
+  English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Chinese, Japanese, Korean, Arabic, Hindi, Turkish, Polish, Ukrainian, Swedish, Danish, Norwegian, Finnish, Czech, Romanian, Greek, Hebrew, Thai, Vietnamese, Indonesian, Malay, Filipino, and 70+ more.
+</Accordion>
+
+### Changing Language
+
+For non-English meetings:
+
+1. Click the **Language** button in the transcript panel header
+2. Select your preferred language
+3. The model will transcribe in that language automatically
+
+<Info>
+  Whisper can also auto-detect languages, but specifying the language improves accuracy and speed.
+</Info>
+
+## Transcript Actions
+
+<CardGroup cols={2}>
+  <Card title="Copy Transcript" icon="copy">
+    Click the **Copy** button to copy the entire transcript to your clipboard in plain text format.
+  </Card>
+  
+  <Card title="Search Transcripts" icon="search">
+    Use the sidebar search to find specific words or phrases across all your meeting transcripts.
+  </Card>
+</CardGroup>
+
+## Post-Recording Processing
+
+After stopping a recording:
+
+<Steps>
+  <Step title="Processing Transcripts">
+    Meetily processes any remaining audio segments that were queued during recording.
+    
+    You'll see a "Processing transcripts..." overlay with progress.
+  </Step>
+  
+  <Step title="Saving Meeting">
+    The complete transcript and audio are saved to the local database.
+    
+    A "Saving meeting..." overlay appears briefly.
+  </Step>
+  
+  <Step title="Ready to View">
+    The meeting appears in your sidebar and you can navigate to it to view the full transcript and generate AI summaries.
+  </Step>
+</Steps>
+
+## Virtualized Rendering
+
+For long meetings with hundreds or thousands of transcript segments:
+
+- Meetily uses virtualized rendering to maintain smooth performance
+- Only visible segments are rendered to the DOM
+- Seamless scrolling through thousands of transcript lines
+- Automatic pagination for meetings with 500+ segments
+
+## Recovery & Reliability
+
+Meetily protects your transcripts from unexpected interruptions:
+
+<AccordionGroup>
+  <Accordion title="Auto-Save">
+    Transcripts are saved continuously to IndexedDB as they're generated. Even if the app crashes, your transcripts are preserved.
+  </Accordion>
+  
+  <Accordion title="Recovery Dialog">
+    If the app detects incomplete meetings (from crashes or force-quits), you'll see a recovery dialog on next launch offering to restore them.
+  </Accordion>
+  
+  <Accordion title="Transcript Preview">
+    Before recovering, you can preview the transcript to verify it's the meeting you want to restore.
+  </Accordion>
+</AccordionGroup>
+
+## Retranscription
+
+Made a mistake with model selection? You can retranscribe any meeting:
+
+1. Open the meeting details page
+2. Click **Retranscribe** in the transcript panel header
+3. Select a different model or language
+4. The meeting will be reprocessed with the new settings
+
+<Warning>
+  Retranscription replaces the existing transcript. Make sure to export the current transcript if you want to keep it.
+</Warning>
+
+## Performance Tips
+
+<Steps>
+  <Step title="Use Appropriate Model Size">
+    For real-time transcription, `small` or `base` models provide the best experience. Save `medium` and `large` for post-recording processing.
+  </Step>
+  
+  <Step title="Enable GPU Acceleration">
+    Check Settings to ensure GPU acceleration is enabled for 5-10x faster transcription.
+  </Step>
+  
+  <Step title="Close Other Apps">
+    For best performance during long meetings, close resource-intensive applications.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Transcription is slow">
+    - Switch to a smaller model (base or tiny)
+    - Verify GPU acceleration is enabled
+    - Check CPU/GPU usage in Activity Monitor/Task Manager
+    - Close other resource-intensive applications
+  </Accordion>
+  
+  <Accordion title="No transcripts appearing">
+    - Verify the Whisper model is loaded (check Settings)
+    - Ensure audio is being captured (check recording bars)
+    - Try speaking louder or closer to microphone
+    - Check that VAD (Voice Activity Detection) is working
+  </Accordion>
+  
+  <Accordion title="Poor accuracy">
+    - Upgrade to a larger model (small → medium → large)
+    - Specify the correct language in Language Settings
+    - Improve audio quality (better microphone, quieter environment)
+    - Check that system audio isn't overwhelming microphone input
+  </Accordion>
+  
+  <Accordion title="Model loading failed">
+    - Check internet connection (required for first download)
+    - Verify sufficient disk space (models range from 75MB to 3GB)
+    - Try deleting and re-downloading the model
+    - Check application logs for specific error messages
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Recording" icon="microphone" href="/features/recording">
+    Learn about audio recording and capture
+  </Card>
+  
+  <Card title="AI Summaries" icon="sparkles" href="/features/ai-summaries">
+    Generate intelligent summaries from transcripts
+  </Card>
+</CardGroup>

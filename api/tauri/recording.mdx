@@ -1,0 +1,394 @@
+---
+title: "Recording Commands"
+description: "Tauri commands for managing audio recording sessions"
+---
+
+## Overview
+
+The Recording Commands API provides control over audio recording sessions, including starting, stopping, pausing, and managing recording state. These commands handle microphone and system audio capture with automatic device selection and meeting management.
+
+## Commands
+
+### start_recording
+
+Starts a new recording session with optional device selection and meeting name.
+
+<ParamField path="mic_device_name" type="string" optional>
+  Name of the microphone device to use. If not provided, uses the default or preferred microphone from settings.
+</ParamField>
+
+<ParamField path="system_device_name" type="string" optional>
+  Name of the system audio device to use. If not provided, uses the default or preferred system audio device from settings.
+</ParamField>
+
+<ParamField path="meeting_name" type="string" optional>
+  Custom name for the meeting. If not provided, generates a name like "Meeting 2025-10-03_08-25-23" based on the current timestamp.
+</ParamField>
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn start_recording<R: Runtime>(
+    app: AppHandle<R>,
+    mic_device_name: Option<String>,
+    system_device_name: Option<String>,
+    meeting_name: Option<String>,
+) -> Result<(), String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+// Start with default devices
+await invoke('start_recording', {
+  mic_device_name: null,
+  system_device_name: null,
+  meeting_name: 'Team Standup'
+});
+
+// Start with specific devices
+await invoke('start_recording', {
+  mic_device_name: 'Built-in Microphone',
+  system_device_name: 'BlackHole 2ch',
+  meeting_name: 'Client Meeting'
+});
+```
+
+**Events Emitted**:
+- `recording-started`: Emitted when recording starts successfully
+- `transcription-error`: Emitted if transcription model is not ready
+- `recording-error`: Emitted if recording fails to start
+
+---
+
+### stop_recording
+
+Stops the current recording session and saves all audio and transcript data.
+
+<ParamField path="save_path" type="string" required>
+  File path where the recording should be saved. The parent directory will be created if it doesn't exist.
+</ParamField>
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn stop_recording<R: Runtime>(
+    app: AppHandle<R>,
+    args: RecordingArgs
+) -> Result<(), String>
+
+#[derive(Debug, Deserialize)]
+struct RecordingArgs {
+    save_path: String,
+}
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+import { join } from '@tauri-apps/api/path';
+
+const savePath = await join(
+  await downloadDir(),
+  'Meetily',
+  'meeting.wav'
+);
+
+await invoke('stop_recording', {
+  args: { save_path: savePath }
+});
+```
+
+**Events Emitted**:
+- `recording-shutdown-progress`: Periodic updates during shutdown process
+- `recording-stopped`: Emitted when recording stops successfully
+- `recording-error`: Emitted if stopping fails
+
+---
+
+### is_recording
+
+Checks if a recording session is currently active.
+
+**Returns**: `Promise<boolean>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn is_recording() -> bool
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const recording = await invoke<boolean>('is_recording');
+if (recording) {
+  console.log('Recording is active');
+}
+```
+
+---
+
+### pause_recording
+
+Pauses the current recording session without stopping transcription.
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn pause_recording<R: Runtime>(
+    app: AppHandle<R>
+) -> Result<(), String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+await invoke('pause_recording');
+```
+
+**Events Emitted**:
+- `recording-paused`: Emitted when recording is paused
+
+---
+
+### resume_recording
+
+Resumes a paused recording session.
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn resume_recording<R: Runtime>(
+    app: AppHandle<R>
+) -> Result<(), String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+await invoke('resume_recording');
+```
+
+**Events Emitted**:
+- `recording-resumed`: Emitted when recording resumes
+
+---
+
+### is_recording_paused
+
+Checks if the current recording is paused.
+
+**Returns**: `Promise<boolean>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn is_recording_paused() -> bool
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const paused = await invoke<boolean>('is_recording_paused');
+```
+
+---
+
+### get_recording_state
+
+Retrieves detailed information about the current recording session.
+
+**Returns**: `Promise<RecordingState>`
+
+**TypeScript Interface**:
+```typescript
+interface RecordingState {
+  is_recording: boolean;
+  is_paused: boolean;
+  is_active: boolean;
+  recording_duration: number | null;
+  active_duration: number | null;
+  total_pause_duration: number;
+  current_pause_duration: number | null;
+}
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_recording_state() -> serde_json::Value
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const state = await invoke<RecordingState>('get_recording_state');
+console.log(`Duration: ${state.recording_duration}s`);
+console.log(`Active: ${state.active_duration}s`);
+console.log(`Paused: ${state.total_pause_duration}s`);
+```
+
+---
+
+### get_meeting_folder_path
+
+Returns the folder path where the current meeting's files are stored.
+
+**Returns**: `Promise<string | null>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_meeting_folder_path() -> Result<Option<String>, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const folderPath = await invoke<string | null>('get_meeting_folder_path');
+if (folderPath) {
+  console.log(`Meeting folder: ${folderPath}`);
+}
+```
+
+---
+
+### get_transcript_history
+
+Retrieves all transcript segments from the current recording session. Useful for syncing state after page reload.
+
+**Returns**: `Promise<TranscriptSegment[]>`
+
+**TypeScript Interface**:
+```typescript
+interface TranscriptSegment {
+  id: string;
+  text: string;
+  audio_start_time: number;
+  audio_end_time: number;
+  duration: number;
+  display_time: string;
+  confidence: number;
+  sequence_id: number;
+}
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_transcript_history() -> Result<Vec<TranscriptSegment>, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const history = await invoke<TranscriptSegment[]>('get_transcript_history');
+history.forEach(segment => {
+  console.log(`[${segment.display_time}] ${segment.text}`);
+});
+```
+
+---
+
+### get_recording_meeting_name
+
+Returns the name of the current meeting.
+
+**Returns**: `Promise<string | null>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_recording_meeting_name() -> Result<Option<String>, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const name = await invoke<string | null>('get_recording_meeting_name');
+console.log(`Meeting: ${name}`);
+```
+
+---
+
+## Events
+
+### recording-started
+
+Emitted when a recording session starts successfully.
+
+**TypeScript Example**:
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+const unlisten = await listen('recording-started', (event) => {
+  console.log('Recording started:', event.payload);
+});
+```
+
+### recording-stopped
+
+Emitted when a recording session stops.
+
+**TypeScript Example**:
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+const unlisten = await listen('recording-stopped', (event) => {
+  const { folder_path, meeting_name } = event.payload;
+  console.log(`Recording saved to: ${folder_path}`);
+});
+```
+
+### recording-paused
+
+Emitted when recording is paused.
+
+### recording-resumed
+
+Emitted when recording resumes after being paused.
+
+### recording-error
+
+Emitted when a recording error occurs.
+
+**TypeScript Example**:
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+const unlisten = await listen('recording-error', (event) => {
+  console.error('Recording error:', event.payload);
+});
+```
+
+### recording-shutdown-progress
+
+Emitted periodically during the shutdown process with progress updates.
+
+**TypeScript Example**:
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+const unlisten = await listen('recording-shutdown-progress', (event) => {
+  const { stage, message, progress } = event.payload;
+  console.log(`${stage}: ${message} (${progress}%)`);
+});
+```

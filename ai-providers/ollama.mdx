@@ -1,0 +1,312 @@
+---
+title: 'Ollama'
+description: 'Set up and use Ollama for local AI-powered meeting summaries'
+icon: 'cube'
+---
+
+Ollama enables you to run large language models locally on your machine, providing privacy-first AI summaries without sending data to external services.
+
+## Overview
+
+Ollama is a local AI model provider that runs entirely on your machine. It's perfect for:
+- **Privacy-conscious users** who want to keep meeting data local
+- **Offline usage** without internet connectivity
+- **Cost-effective** AI summaries with no API fees
+- **Custom models** and fine-tuning options
+
+## Installation
+
+<Steps>
+  <Step title="Download Ollama">
+    Download and install Ollama from the [official website](https://ollama.com/download).
+    
+    Available for:
+    - macOS
+    - Windows
+    - Linux
+  </Step>
+
+  <Step title="Verify Installation">
+    Open a terminal and verify Ollama is installed:
+    
+    ```bash
+    ollama --version
+    ```
+    
+    The Ollama service should start automatically on port `11434`.
+  </Step>
+
+  <Step title="Pull a Model">
+    Download a recommended model for meeting summaries:
+    
+    ```bash
+    # Lightweight option (800MB)
+    ollama pull gemma3:1b
+    
+    # Balanced option (1.7GB)
+    ollama pull llama3.2:latest
+    
+    # High-quality option (4.1GB)
+    ollama pull llama3.3:70b
+    ```
+  </Step>
+</Steps>
+
+## Configuration
+
+### Basic Setup
+
+<Steps>
+  <Step title="Open Settings">
+    Navigate to **Settings > Summary** in Meetily.
+  </Step>
+
+  <Step title="Select Ollama Provider">
+    Choose **Ollama** from the Summarization Model dropdown.
+  </Step>
+
+  <Step title="Choose Model">
+    Meetily will automatically detect your installed Ollama models. Select your preferred model from the list.
+    
+    **Recommended models:**
+    - `gemma3:1b` - Fast, lightweight (800MB)
+    - `llama3.2:latest` - Balanced performance (1.7GB)
+    - `llama3.3:70b` - Highest quality (4.1GB)
+  </Step>
+
+  <Step title="Save Configuration">
+    Click **Done** to save your settings.
+  </Step>
+</Steps>
+
+### Custom Endpoint
+
+If you're running Ollama on a different machine or port, you can configure a custom endpoint.
+
+<Steps>
+  <Step title="Expand Custom Endpoint">
+    In Settings > Summary, click **Custom Endpoint (optional)** to expand the section.
+  </Step>
+
+  <Step title="Enter Endpoint URL">
+    Enter your custom Ollama endpoint:
+    
+    ```
+    http://192.168.1.100:11434
+    ```
+    
+    The endpoint must start with `http://` or `https://`.
+  </Step>
+
+  <Step title="Fetch Models">
+    Click **Fetch Models** to load available models from the custom endpoint.
+  </Step>
+
+  <Step title="Select Model & Save">
+    Choose your model and click **Done**.
+  </Step>
+</Steps>
+
+## Model Management
+
+### Downloading Models in Meetily
+
+You can download Ollama models directly from Meetily's interface:
+
+1. Go to **Settings > Summary**
+2. Select **Ollama** as the provider
+3. If no models are found, click **Download gemma3:1b (Recommended, ~800MB)**
+4. Monitor download progress in the interface
+5. Once complete, the model will appear in your available models list
+
+### Command Line Management
+
+```bash
+# List installed models
+ollama list
+
+# Pull a new model
+ollama pull llama3.2:latest
+
+# Delete a model
+ollama rm llama3.2:latest
+
+# View model information
+ollama show llama3.2:latest
+```
+
+### Deleting Models
+
+To free up disk space:
+
+1. In Meetily Settings > Summary, find the model in your list
+2. Click the delete icon next to the model
+3. Confirm deletion
+
+Alternatively, use the command line:
+```bash
+ollama rm <model-name>
+```
+
+## API Key Management
+
+<Note>
+  Ollama does **not** require API keys. It runs entirely locally without authentication.
+</Note>
+
+## Usage Examples
+
+### Generate a Summary
+
+1. Record a meeting in Meetily
+2. Stop the recording
+3. The summary will be automatically generated using your configured Ollama model
+4. View the summary in the meeting details
+
+### Model Context Size
+
+Meetily automatically detects the context size for your Ollama model. Larger context windows allow processing longer meetings in fewer chunks.
+
+**Typical context sizes:**
+- Small models: 4,000 tokens (~3,000 words)
+- Medium models: 8,000 tokens (~6,000 words)
+- Large models: 32,000+ tokens (~24,000+ words)
+
+## Troubleshooting
+
+### Ollama Not Found
+
+**Error:** "Ollama is not installed or not running"
+
+**Solution:**
+1. Verify Ollama is installed: `ollama --version`
+2. Check the service is running (should start automatically)
+3. Restart Ollama: Close the app and reopen it
+4. On Linux, ensure the service is enabled: `systemctl status ollama`
+
+### Connection Failed
+
+**Error:** "Cannot connect to http://localhost:11434"
+
+**Solution:**
+1. Verify Ollama is running: `curl http://localhost:11434/api/tags`
+2. Check firewall settings
+3. If using a custom endpoint, verify the URL is correct
+
+### No Models Found
+
+**Error:** "No models found on the Ollama server"
+
+**Solution:**
+```bash
+# Pull at least one model
+ollama pull gemma3:1b
+
+# Verify it's installed
+ollama list
+
+# Refresh models in Meetily
+# Settings > Summary > Fetch Models
+```
+
+### Slow Performance
+
+**Issue:** Summaries take a long time to generate
+
+**Solution:**
+1. **Use a smaller model** - Switch from 70b to 7b or 1b variants
+2. **Enable GPU acceleration** - Ollama automatically uses available GPUs (NVIDIA, AMD, Apple Silicon)
+3. **Check system resources** - Ensure sufficient RAM (8GB minimum for small models)
+4. **Update Ollama** - Newer versions include performance improvements
+
+## Performance Optimization
+
+### GPU Acceleration
+
+Ollama automatically detects and uses available GPUs:
+
+- **macOS**: Metal (Apple Silicon M1/M2/M3)
+- **Windows/Linux**: CUDA (NVIDIA), ROCm (AMD)
+
+Verify GPU usage:
+```bash
+ollama ps
+```
+
+### Model Selection Guidelines
+
+| Model | Size | Speed | Quality | Best For |
+|-------|------|-------|---------|----------|
+| gemma3:1b | 800MB | Fast | Good | Quick summaries, low-spec hardware |
+| llama3.2:3b | 2GB | Medium | Very Good | Balanced performance |
+| llama3.2:7b | 4.7GB | Slower | Excellent | High-quality summaries |
+| llama3.3:70b | 40GB+ | Slow | Best | Maximum quality, powerful hardware |
+
+### Memory Requirements
+
+- **1B models**: 4GB RAM minimum
+- **3B models**: 8GB RAM minimum
+- **7B models**: 16GB RAM recommended
+- **70B models**: 64GB+ RAM (or use quantized versions)
+
+## Advanced Configuration
+
+### Running Ollama on a Server
+
+1. **On the server**, start Ollama with network binding:
+   ```bash
+   OLLAMA_HOST=0.0.0.0:11434 ollama serve
+   ```
+
+2. **In Meetily**, configure the custom endpoint:
+   ```
+   http://server-ip:11434
+   ```
+
+3. **Security note**: Consider using a reverse proxy with authentication for remote access.
+
+### Custom Model Parameters
+
+Ollama supports custom parameters via Modelfile. Create a custom model:
+
+```bash
+# Create a Modelfile
+cat > Modelfile << EOF
+FROM llama3.2:latest
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER num_ctx 8192
+EOF
+
+# Create the custom model
+ollama create meetily-summarizer -f Modelfile
+```
+
+Then select `meetily-summarizer` in Meetily's settings.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Start Small" icon="rocket">
+    Begin with `gemma3:1b` to test the workflow, then upgrade to larger models for better quality.
+  </Card>
+  
+  <Card title="Monitor Resources" icon="gauge">
+    Use system monitoring tools to track RAM and GPU usage during summary generation.
+  </Card>
+  
+  <Card title="Regular Updates" icon="arrow-up">
+    Keep Ollama updated for performance improvements and new model support.
+  </Card>
+  
+  <Card title="Model Caching" icon="database">
+    Keep your most-used model cached by running it at least once before important meetings.
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+- [Ollama Official Documentation](https://ollama.com/docs)
+- [Available Models Library](https://ollama.com/library)
+- [Meetily Configuration Guide](/quickstart/ai-setup)
+- [Custom OpenAI Endpoint](/ai-providers/custom-endpoint) - Alternative local setup

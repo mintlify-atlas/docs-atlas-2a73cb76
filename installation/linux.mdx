@@ -1,0 +1,522 @@
+---
+title: 'Linux Installation'
+description: 'Build and install Meetily on Linux with automatic GPU acceleration'
+---
+
+# Installing Meetily on Linux
+
+Meetily on Linux offers the most flexibility with automatic GPU detection and support for NVIDIA CUDA, AMD ROCm, and Vulkan acceleration. Currently, Linux users must build from source, but the process is streamlined with automatic GPU detection.
+
+## System Requirements
+
+<Info>
+**Minimum Requirements**
+- Linux distribution with kernel 4.15+ (Ubuntu 18.04+, Fedora 28+, Arch, etc.)
+- 8 GB RAM (16 GB recommended)
+- 2 GB free disk space
+- Build tools: `gcc`, `cmake`, `git`
+- Node.js 18+ and pnpm (or npm)
+- Microphone access
+</Info>
+
+### Recommended Specifications
+
+- **Modern distribution**: Ubuntu 22.04+, Fedora 38+, Arch Linux (rolling)
+- **GPU acceleration**: NVIDIA (CUDA), AMD (ROCm), or any GPU (Vulkan)
+- **16 GB RAM** for large language models and long meetings
+- **Fast SSD** for model loading and audio processing
+
+### GPU Acceleration Support
+
+| GPU Type | Acceleration | Speed Boost | Requirements |
+|----------|--------------|-------------|-------------|
+| **NVIDIA** | CUDA | 5-10x | CUDA Toolkit 12.x, nvidia-smi |
+| **AMD** | ROCm (HIPBlas) | 4-8x | ROCm 5.x+, rocm-smi |
+| **Any GPU** | Vulkan | 3-6x | Vulkan SDK, drivers |
+| **CPU-optimized** | OpenBLAS | 1.5-2x | OpenBLAS library |
+| **No GPU** | CPU-only | 1x (baseline) | None |
+
+<Tip>
+The build system automatically detects your GPU and configures the best acceleration method. No manual configuration needed!
+</Tip>
+
+## Quick Start Installation
+
+For most users, this simple process works perfectly:
+
+<Steps>
+  <Step title="Install dependencies">
+    Choose your distribution:
+    
+    **Ubuntu/Debian:**
+    ```bash
+    sudo apt update
+    sudo apt install build-essential cmake git curl
+    ```
+    
+    **Fedora/RHEL:**
+    ```bash
+    sudo dnf install gcc-c++ cmake git curl
+    ```
+    
+    **Arch Linux:**
+    ```bash
+    sudo pacman -S base-devel cmake git curl
+    ```
+  </Step>
+  
+  <Step title="Install Node.js and pnpm">
+    ```bash
+    # Install Node.js 18+ (via nvm recommended)
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    source ~/.bashrc
+    nvm install 18
+    
+    # Install pnpm
+    npm install -g pnpm
+    ```
+  </Step>
+  
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
+    cd meeting-minutes/frontend
+    ```
+  </Step>
+  
+  <Step title="Install Node dependencies">
+    ```bash
+    pnpm install
+    ```
+  </Step>
+  
+  <Step title="Build and run">
+    ```bash
+    # Development mode (with hot reload)
+    ./dev-gpu.sh
+    
+    # Or production build
+    ./build-gpu.sh
+    ```
+    
+    <Info>
+    The build scripts automatically detect your GPU hardware and build with the optimal acceleration method.
+    </Info>
+  </Step>
+</Steps>
+
+## GPU-Accelerated Installation
+
+### NVIDIA GPU (CUDA)
+
+For 5-10x faster transcription on NVIDIA GPUs:
+
+<Steps>
+  <Step title="Check GPU compatibility">
+    Verify your GPU has compute capability 5.0 or higher:
+    ```bash
+    nvidia-smi --query-gpu=compute_cap --format=csv
+    ```
+    
+    Common GPUs:
+    - RTX 30/40 series: ✅ Compute 8.6-8.9
+    - GTX 16 series: ✅ Compute 7.5
+    - GTX 10 series: ✅ Compute 6.1
+  </Step>
+  
+  <Step title="Install CUDA Toolkit">
+    **Ubuntu/Debian:**
+    ```bash
+    sudo apt install nvidia-driver-550 nvidia-cuda-toolkit
+    
+    # Verify installation
+    nvidia-smi
+    nvcc --version
+    ```
+    
+    **Fedora:**
+    ```bash
+    sudo dnf install cuda-toolkit
+    ```
+    
+    **Arch Linux:**
+    ```bash
+    sudo pacman -S cuda
+    ```
+  </Step>
+  
+  <Step title="Build with CUDA">
+    The build script will automatically detect CUDA. Optionally, set your GPU's compute capability for optimization:
+    
+    ```bash
+    # Example: RTX 3080 has compute capability 8.6 → use "86"
+    CMAKE_CUDA_ARCHITECTURES=86 \
+    CMAKE_CUDA_STANDARD=17 \
+    CMAKE_POSITION_INDEPENDENT_CODE=ON \
+    ./build-gpu.sh
+    ```
+    
+    <Tip>
+    To find your compute capability, convert the output from step 1: `8.6` → `86`, `7.5` → `75`, etc.
+    </Tip>
+  </Step>
+</Steps>
+
+### AMD GPU (ROCm)
+
+For 4-8x faster transcription on AMD GPUs:
+
+<Steps>
+  <Step title="Check GPU compatibility">
+    Verify your GPU supports ROCm:
+    - RX 5000 series or newer ✅
+    - Radeon VII ✅
+    - RX 6000/7000 series ✅
+    
+    See [AMD ROCm compatibility list](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html)
+  </Step>
+  
+  <Step title="Install ROCm">
+    **Ubuntu:**
+    ```bash
+    # Add ROCm repository
+    wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
+    echo 'deb [arch=amd64] https://repo.radeon.com/rocm/apt/debian/ ubuntu main' | sudo tee /etc/apt/sources.list.d/rocm.list
+    
+    sudo apt update
+    sudo apt install rocm-smi hipcc
+    
+    # Set environment
+    echo 'export ROCM_PATH=/opt/rocm' >> ~/.bashrc
+    source ~/.bashrc
+    
+    # Verify
+    rocm-smi
+    hipcc --version
+    ```
+    
+    For other distributions, see [ROCm installation guide](https://rocm.docs.amd.com/en/latest/deploy/linux/quick_start.html).
+  </Step>
+  
+  <Step title="Build with ROCm">
+    ```bash
+    ./build-gpu.sh
+    ```
+    
+    The script automatically detects ROCm and builds with `--features hipblas`.
+  </Step>
+</Steps>
+
+### Vulkan (Cross-Platform)
+
+Vulkan works with NVIDIA, AMD, and Intel GPUs (3-6x speedup):
+
+<Steps>
+  <Step title="Install Vulkan SDK and BLAS">
+    **Ubuntu/Debian:**
+    ```bash
+    sudo apt install vulkan-sdk libopenblas-dev
+    ```
+    
+    **Fedora:**
+    ```bash
+    sudo dnf install vulkan-devel openblas-devel
+    ```
+    
+    **Arch Linux:**
+    ```bash
+    sudo pacman -S vulkan-devel openblas
+    ```
+  </Step>
+  
+  <Step title="Configure environment">
+    Add to `~/.bashrc` or `~/.zshrc`:
+    ```bash
+    export VULKAN_SDK=/usr
+    export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu
+    ```
+    
+    Apply changes:
+    ```bash
+    source ~/.bashrc
+    ```
+  </Step>
+  
+  <Step title="Build with Vulkan">
+    ```bash
+    ./build-gpu.sh
+    ```
+    
+    The script detects Vulkan automatically when environment variables are set.
+  </Step>
+</Steps>
+
+## Understanding Auto-Detection
+
+The build scripts (`dev-gpu.sh` and `build-gpu.sh`) use intelligent hardware detection:
+
+### Detection Priority
+
+1. **NVIDIA CUDA**: Checks for `nvidia-smi` + (`CUDA_PATH` or `nvcc`)
+2. **AMD ROCm**: Checks for `rocm-smi` + (`ROCM_PATH` or `hipcc`)
+3. **Vulkan**: Checks for `vulkaninfo` + `VULKAN_SDK` + `BLAS_INCLUDE_DIRS`
+4. **OpenBLAS**: Checks for `BLAS_INCLUDE_DIRS`
+5. **CPU-only**: Falls back if none detected
+
+### Common Scenarios
+
+| Your System | Auto-Detection Result | Why |
+|-------------|----------------------|-----|
+| Clean Linux install | CPU-only | No GPU SDK detected |
+| NVIDIA GPU + drivers only | CPU-only | CUDA toolkit not installed |
+| NVIDIA GPU + CUDA toolkit | **CUDA acceleration** ✅ | Full detection successful |
+| AMD GPU + ROCm | **HIPBlas acceleration** ✅ | Full detection successful |
+| Vulkan SDK configured | **Vulkan acceleration** ✅ | All requirements met |
+
+<Info>
+**Key Insight**: GPU drivers alone aren't enough. You need the **development SDK** (CUDA toolkit, ROCm, or Vulkan SDK) for acceleration.
+</Info>
+
+## Advanced Configuration
+
+### Manual Feature Override
+
+Force a specific acceleration method:
+
+```bash
+# Force CUDA (ignore auto-detection)
+TAURI_GPU_FEATURE=cuda ./build-gpu.sh
+
+# Force Vulkan
+TAURI_GPU_FEATURE=vulkan ./build-gpu.sh
+
+# Force ROCm (HIPBlas)
+TAURI_GPU_FEATURE=hipblas ./build-gpu.sh
+
+# Force CPU-only
+TAURI_GPU_FEATURE="" ./build-gpu.sh
+
+# Force OpenBLAS (CPU-optimized)
+TAURI_GPU_FEATURE=openblas ./build-gpu.sh
+```
+
+### Build Output Location
+
+After successful build, the AppImage is located at:
+```
+src-tauri/target/release/bundle/appimage/Meetily_0.3.0_amd64.AppImage
+```
+
+### Running the AppImage
+
+```bash
+# Make executable
+chmod +x Meetily_0.3.0_amd64.AppImage
+
+# Run
+./Meetily_0.3.0_amd64.AppImage
+```
+
+<Tip>
+You can move the AppImage anywhere and it will run. No installation needed!
+</Tip>
+
+## Post-Installation Setup
+
+### Audio Configuration
+
+Linux audio setup varies by distribution:
+
+<Steps>
+  <Step title="Install audio dependencies">
+    **PulseAudio (most distributions):**
+    ```bash
+    sudo apt install pulseaudio pavucontrol  # Ubuntu/Debian
+    sudo dnf install pulseaudio pavucontrol  # Fedora
+    ```
+    
+    **PipeWire (Fedora 34+, Ubuntu 22.10+):**
+    ```bash
+    sudo apt install pipewire pipewire-pulse  # Ubuntu
+    sudo dnf install pipewire pipewire-pulseaudio  # Fedora
+    ```
+  </Step>
+  
+  <Step title="Configure system audio capture">
+    For capturing system audio (e.g., from Zoom, Teams):
+    
+    1. Open **PulseAudio Volume Control** (`pavucontrol`)
+    2. Go to **Recording** tab
+    3. When Meetily is recording, select your audio source:
+       - **Monitor of [your output device]** for system audio only
+       - **[Your microphone]** for microphone only
+       - Use a loopback module for mixing both (advanced)
+  </Step>
+  
+  <Step title="Test audio in Meetily">
+    1. Launch Meetily
+    2. Go to **Settings** → **Audio**
+    3. Select your microphone and system audio devices
+    4. Use **Test Audio** to verify both are working
+  </Step>
+</Steps>
+
+### Choosing a Transcription Model
+
+Meetily includes several Whisper models:
+
+| Model | Size | CPU Speed | GPU Speed | Accuracy | Recommended For |
+|-------|------|-----------|-----------|----------|----------------|
+| **tiny** | 75 MB | Fast | Very Fast | Basic | Quick tests |
+| **base** | 142 MB | Moderate | Fast | Good | Short meetings |
+| **small** | 466 MB | Slow | Moderate | Better | Most meetings |
+| **medium** | 1.5 GB | Very Slow | Moderate | Great | Important meetings |
+| **large-v3** | 3 GB | Extremely Slow | Slow | Best | Critical transcription |
+
+<Warning>
+Without GPU acceleration, larger models (medium/large) may not work in real-time. Start with `small` and adjust based on performance.
+</Warning>
+
+## Troubleshooting
+
+### "CUDA toolkit not found" During Build
+
+**Issue**: Build script reports CUDA not detected despite installation.
+
+**Solution**:
+1. Verify CUDA is installed: `nvcc --version`
+2. Set `CUDA_PATH` if needed: `export CUDA_PATH=/usr/local/cuda`
+3. Add to `~/.bashrc` to persist
+
+### "Vulkan detected but missing dependencies"
+
+**Issue**: Vulkan is installed but build fails.
+
+**Solution**:
+1. Ensure both environment variables are set:
+   ```bash
+   export VULKAN_SDK=/usr
+   export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu
+   ```
+2. Verify OpenBLAS is installed: `ldconfig -p | grep openblas`
+3. Restart terminal and rebuild
+
+### Build Works But No GPU Acceleration
+
+**Issue**: App runs but uses CPU instead of GPU.
+
+**Solution**:
+1. Check build output for GPU detection messages
+2. Verify drivers: `nvidia-smi` (NVIDIA) or `rocm-smi` (AMD)
+3. Ensure you installed the **development SDK**, not just drivers
+4. Try manually specifying the feature: `TAURI_GPU_FEATURE=cuda ./build-gpu.sh`
+
+### Microphone Not Working
+
+**Issue**: Meetily can't access the microphone.
+
+**Solution**:
+1. Check PulseAudio/PipeWire is running: `systemctl --user status pulseaudio`
+2. Grant microphone permissions (if using Flatpak/Snap - not applicable for AppImage)
+3. Test with: `arecord -l` (should list your microphone)
+4. Use `pavucontrol` to verify Meetily appears in Recording tab
+
+### System Audio Not Capturing
+
+**Issue**: Only microphone audio is recorded.
+
+**Solution**:
+1. In Meetily settings, select **Monitor of [your output]** as system audio device
+2. Use `pavucontrol` → Recording tab to manually select the monitor device while recording
+3. For mixing mic + system audio, set up a PulseAudio loopback:
+   ```bash
+   pactl load-module module-loopback
+   ```
+
+### AppImage Won't Launch
+
+**Issue**: Double-clicking AppImage does nothing.
+
+**Solution**:
+1. Make executable: `chmod +x Meetily_0.3.0_amd64.AppImage`
+2. Run from terminal to see errors: `./Meetily_0.3.0_amd64.AppImage`
+3. Install FUSE if missing:
+   ```bash
+   sudo apt install fuse libfuse2  # Ubuntu/Debian
+   sudo dnf install fuse fuse-libs  # Fedora
+   ```
+
+### "Cannot Connect to Backend" Error
+
+**Issue**: Meetily shows connection error on launch.
+
+**Solution**:
+1. Check if port 5167 is in use: `sudo lsof -i :5167`
+2. Kill conflicting process or restart Meetily
+3. Check firewall isn't blocking: `sudo ufw status` (if using ufw)
+
+### Build Fails with "out of memory"
+
+**Issue**: Compilation runs out of RAM.
+
+**Solution**:
+1. Close other applications
+2. Limit parallel jobs:
+   ```bash
+   CARGO_BUILD_JOBS=2 ./build-gpu.sh
+   ```
+3. Add swap space if you have less than 8 GB RAM
+
+## Uninstalling Meetily
+
+Since AppImage is self-contained:
+
+<Steps>
+  <Step title="Remove the AppImage">
+    Simply delete the `.AppImage` file:
+    ```bash
+    rm Meetily_0.3.0_amd64.AppImage
+    ```
+  </Step>
+  
+  <Step title="Remove application data (optional)">
+    To remove recordings, transcripts, and settings:
+    ```bash
+    rm -rf ~/.local/share/Meetily
+    rm -rf ~/.config/Meetily
+    rm -rf ~/.cache/Meetily
+    ```
+  </Step>
+  
+  <Step title="Remove source directory (optional)">
+    If you cloned the repository:
+    ```bash
+    rm -rf ~/meeting-minutes
+    ```
+  </Step>
+</Steps>
+
+## Getting Help
+
+If you encounter issues not covered here:
+
+- **GitHub Issues**: [Report a bug](https://github.com/Zackriya-Solutions/meeting-minutes/issues)
+- **Discord**: Join the [Meetily Discord](https://discord.gg/crRymMQBFH) for community support
+- **Detailed Linux Guide**: See [docs/building_in_linux.md](https://github.com/Zackriya-Solutions/meeting-minutes/blob/main/docs/building_in_linux.md)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn how to record your first meeting
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/privacy">
+    Customize Meetily settings for your workflow
+  </Card>
+  <Card title="AI Providers" icon="brain" href="/ai-providers/ollama">
+    Set up AI summaries with Ollama or cloud providers
+  </Card>
+  <Card title="Development Guide" icon="code" href="/development">
+    Advanced build options and contribution guide
+  </Card>
+</CardGroup>

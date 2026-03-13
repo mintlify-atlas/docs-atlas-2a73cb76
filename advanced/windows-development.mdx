@@ -1,0 +1,679 @@
+---
+title: "Windows Development"
+description: "Platform-specific development setup for Windows with CUDA and Vulkan GPU acceleration"
+---
+
+## Overview
+
+Windows development for Meetily supports multiple GPU acceleration backends (CUDA for NVIDIA, Vulkan for AMD/Intel) and uses WASAPI for professional audio capture. This guide covers setup, build configuration, and troubleshooting for the Windows platform.
+
+## Prerequisites
+
+### Required Software
+
+<Steps>
+
+<Step title="Visual Studio Build Tools">
+Install Visual Studio 2022 Build Tools with C++ workload.
+
+<CodeGroup>
+
+```powershell Download Installer
+# Download from Microsoft
+# https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
+
+# Or use winget
+winget install Microsoft.VisualStudio.2022.BuildTools
+```
+
+```powershell Required Workloads
+# During installation, select:
+# - Desktop development with C++
+# - Windows 10 SDK (10.0.22621.0 or later)
+# - MSVC v143 - VS 2022 C++ x64/x86 build tools
+```
+
+</CodeGroup>
+</Step>
+
+<Step title="LLVM and Clang">
+Required for whisper-rs compilation.
+
+```powershell Install LLVM
+# Download and install from https://github.com/llvm/llvm-project/releases
+# Install to: C:\Program Files\LLVM
+
+# Or use winget
+winget install LLVM.LLVM
+
+# Verify installation
+"C:\Program Files\LLVM\bin\clang" --version
+```
+</Step>
+
+<Step title="CMake">
+Required for building native dependencies.
+
+```powershell Install CMake
+# Download from https://cmake.org/download/
+
+# Or use winget
+winget install Kitware.CMake
+
+# Verify
+cmake --version
+```
+</Step>
+
+<Step title="Node.js and pnpm">
+JavaScript runtime and package manager.
+
+```powershell Install Node.js
+# Download from https://nodejs.org/
+
+# Or use winget
+winget install OpenJS.NodeJS.LTS
+
+# Install pnpm
+npm install -g pnpm
+
+# Verify
+node --version
+pnpm --version
+```
+</Step>
+
+<Step title="Rust Toolchain">
+Rust compiler and cargo.
+
+```powershell Install Rust
+# Download rustup from https://rustup.rs/
+
+# Or use winget
+winget install Rustlang.Rustup
+
+# Verify
+rustc --version
+cargo --version
+```
+</Step>
+
+</Steps>
+
+### System Requirements
+
+- Windows 10/11 (64-bit)
+- 8GB RAM minimum (16GB recommended)
+- Visual Studio Build Tools 2019 or later
+- Windows SDK 10.0.22621.0 or compatible
+
+## GPU Acceleration Options
+
+### CUDA (NVIDIA GPUs)
+
+<Warning>
+CUDA requires an NVIDIA GPU with compute capability 5.0 or higher.
+</Warning>
+
+<Steps>
+
+<Step title="Install NVIDIA Drivers">
+Download the latest drivers from NVIDIA.
+
+```powershell Check GPU
+# Verify NVIDIA GPU
+nvidia-smi
+
+# Check compute capability
+nvidia-smi --query-gpu=compute_cap --format=csv
+```
+</Step>
+
+<Step title="Install CUDA Toolkit">
+Download CUDA Toolkit 12.x from NVIDIA.
+
+```powershell Install CUDA
+# Download from https://developer.nvidia.com/cuda-downloads
+
+# Or use winget
+winget install Nvidia.CUDA
+
+# Verify installation
+nvcc --version
+
+# Check CUDA path
+echo %CUDA_PATH%
+```
+</Step>
+
+<Step title="Build with CUDA">
+Use the build script or manual commands.
+
+```powershell Automatic Build
+# Use the GPU build script (auto-detects CUDA)
+.\build-gpu.bat
+```
+
+```powershell Manual Build
+# Force CUDA acceleration
+cd frontend
+pnpm run tauri:build:cuda
+
+# Or build directly
+cd src-tauri
+cargo build --release --features cuda
+```
+</Step>
+
+</Steps>
+
+### Vulkan (AMD/Intel GPUs)
+
+Vulkan provides cross-vendor GPU acceleration for AMD and Intel GPUs.
+
+<Steps>
+
+<Step title="Install GPU Drivers">
+Install latest drivers from your GPU manufacturer.
+
+```powershell Verify Vulkan
+# Check Vulkan support (if vulkaninfo is installed)
+vulkaninfo --summary
+```
+</Step>
+
+<Step title="Install Vulkan SDK">
+Download from LunarG.
+
+```powershell Install Vulkan SDK
+# Download from https://vulkan.lunarg.com/sdk/home#windows
+
+# Or via installer
+# Version 1.3.x recommended
+
+# Verify
+echo %VULKAN_SDK%
+vulkaninfo
+```
+</Step>
+
+<Step title="Build with Vulkan">
+Automatic detection or manual configuration.
+
+```powershell Automatic Build
+# Auto-detects Vulkan
+.\build-gpu.bat
+```
+
+```powershell Manual Build
+# Force Vulkan acceleration
+cd frontend
+pnpm run tauri:build:vulkan
+
+# Or build directly
+cd src-tauri
+cargo build --release --features vulkan
+```
+</Step>
+
+</Steps>
+
+### CPU-Only Build
+
+For systems without GPU or for testing.
+
+```powershell CPU Build
+cd frontend
+pnpm run tauri:build:cpu
+
+# Or
+cd src-tauri
+cargo build --release
+```
+
+## Development Workflow
+
+### Quick Start
+
+<CodeGroup>
+
+```powershell Clone and Setup
+# Clone repository
+git clone https://github.com/Zackriya-Solutions/meeting-minutes
+cd meeting-minutes\frontend
+
+# Install dependencies
+pnpm install
+```
+
+```powershell Development Mode
+# Run with hot reload (auto-detects GPU)
+.\clean_run_windows.bat
+
+# Or use dev-gpu script
+.\dev-gpu.bat
+```
+
+```powershell Production Build
+# Clean production build (auto-detects GPU)
+.\clean_build_windows.bat
+
+# Or use GPU-optimized build
+.\build-gpu.bat
+
+# Output location:
+# src-tauri\target\release\bundle\msi\Meetily_0.3.0_x64_en-US.msi
+```
+
+</CodeGroup>
+
+### Build Scripts Overview
+
+The Windows build scripts handle:
+
+1. **Environment Setup**: Configures Visual Studio paths and LIBCLANG_PATH
+2. **Port Cleanup**: Kills any process on port 3118
+3. **GPU Detection**: Runs `auto-detect-gpu.js` to identify hardware
+4. **Sidecar Building**: Compiles `llama-helper` with appropriate features
+5. **Binary Packaging**: Creates .msi installer and portable .exe
+
+<CodeGroup>
+
+```batch build-gpu.bat
+@echo off
+REM Automatic GPU detection and build
+
+REM Set libclang path
+set "LIBCLANG_PATH=C:\Program Files\LLVM\bin"
+
+REM Detect GPU
+for /f "delims=" %%i in ('node scripts/auto-detect-gpu.js') do set TAURI_GPU_FEATURE=%%i
+
+REM Build with detected features
+pnpm run tauri:build
+```
+
+```batch clean_build_windows.bat
+@echo off
+echo Cleaning dependencies...
+rd /s /q node_modules
+del /f /q package-lock.json
+
+echo Installing dependencies...
+pnpm install
+
+echo Building project...
+pnpm run tauri build
+```
+
+</CodeGroup>
+
+## Audio System (WASAPI)
+
+### Windows Audio Session API
+
+Meetily uses WASAPI for low-latency, professional audio capture.
+
+<CodeGroup>
+
+```rust WASAPI Configuration
+// Location: frontend/src-tauri/src/audio/devices/platform/windows.rs
+
+// Loopback capture for system audio
+let device = audio::default_output_device()
+    .expect("No output device available");
+
+// Shared mode for microphone
+let mic_device = audio::default_input_device()
+    .expect("No input device available");
+```
+
+```powershell Test Audio Devices
+# List audio devices (PowerShell)
+Get-AudioDevice -List
+
+# Or use Meetily's device discovery
+# The app will show all available devices in Settings
+```
+
+</CodeGroup>
+
+### Audio Routing
+
+WASAPI provides native loopback capture, so no virtual audio device is needed:
+
+- **Microphone**: Direct capture via WASAPI shared mode
+- **System Audio**: WASAPI loopback capture from default output device
+- **Mixing**: Professional ducking and RMS normalization in the pipeline
+
+<Note>
+Unlike macOS, Windows doesn't require additional virtual audio devices for system audio capture. WASAPI provides native loopback functionality.
+</Note>
+
+## Platform-Specific Configuration
+
+### Environment Variables
+
+<CodeGroup>
+
+```powershell Required Variables
+# LIBCLANG_PATH for whisper-rs compilation
+$env:LIBCLANG_PATH="C:\Program Files\LLVM\bin"
+
+# Visual Studio paths (auto-set by build scripts)
+$env:LIB="C:\Program Files (x86)\Microsoft Visual Studio\..."
+$env:INCLUDE="C:\Program Files (x86)\Microsoft Visual Studio\..."
+```
+
+```powershell Optional GPU Variables
+# CUDA (if manually configuring)
+$env:CUDA_PATH="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0"
+
+# Vulkan
+$env:VULKAN_SDK="C:\VulkanSDK\1.3.xxx.0"
+```
+
+```powershell Build Optimization
+# Faster linking
+$env:CARGO_PROFILE_RELEASE_LTO="thin"
+
+# Parallel compilation
+$env:CARGO_BUILD_JOBS="8"
+```
+
+</CodeGroup>
+
+### Cargo.toml Features
+
+```toml Windows-Specific Dependencies
+[target.'cfg(target_os = "windows")'.dependencies]
+whisper-rs = { version = "0.13.2", features = ["raw-api", "vulkan"] }
+futures-channel = "0.3.31"
+
+# WASAPI for audio capture (via cpal)
+cpal = "0.15.3"
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Build fails with 'cannot find libclang'">
+**Symptoms**: Error during whisper-rs compilation
+
+**Solution**:
+```powershell Set LIBCLANG Path
+# Check LLVM installation
+dir "C:\Program Files\LLVM\bin"
+
+# Set environment variable
+$env:LIBCLANG_PATH="C:\Program Files\LLVM\bin"
+setx LIBCLANG_PATH "C:\Program Files\LLVM\bin"
+
+# Rebuild
+cd src-tauri
+cargo clean
+cargo build --release
+```
+</Accordion>
+
+<Accordion title="CUDA not detected">
+**Symptoms**: Build completes but GPU acceleration not enabled
+
+**Check**:
+```powershell Verify CUDA
+# Check GPU
+nvidia-smi
+
+# Check CUDA toolkit
+nvcc --version
+
+# Check CUDA_PATH
+echo %CUDA_PATH%
+
+# If not set
+setx CUDA_PATH "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0"
+```
+
+Then rebuild with:
+```powershell
+.\build-gpu.bat
+```
+</Accordion>
+
+<Accordion title="Visual Studio Build Tools not found">
+**Symptoms**: Missing MSVC compiler or linker errors
+
+**Solution**:
+```powershell Install Build Tools
+# Install with winget
+winget install Microsoft.VisualStudio.2022.BuildTools
+
+# Or download installer
+# https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
+
+# Ensure "Desktop development with C++" is selected
+```
+
+Verify installation:
+```powershell
+# Check for vcvars64.bat
+dir "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+```
+</Accordion>
+
+<Accordion title="Port 3118 already in use">
+**Symptoms**: Development server fails to start
+
+**Solution**:
+```powershell Kill Process
+# Find process on port 3118
+netstat -ano | findstr :3118
+
+# Kill process (replace PID)
+taskkill /PID <PID> /F
+
+# Or use build script (auto-handles this)
+.\dev-gpu.bat
+```
+</Accordion>
+
+<Accordion title="Vulkan SDK not detected">
+**Symptoms**: Build doesn't enable Vulkan features
+
+**Solution**:
+```powershell Install and Configure Vulkan
+# Install Vulkan SDK from https://vulkan.lunarg.com/
+
+# Verify installation
+echo %VULKAN_SDK%
+vulkaninfo
+
+# If not set, add to environment
+setx VULKAN_SDK "C:\VulkanSDK\1.3.xxx.0"
+
+# Rebuild
+.\build-gpu.bat
+```
+</Accordion>
+
+<Accordion title="Audio devices not detected">
+**Symptoms**: No microphone or system audio options
+
+**Solution**:
+```powershell Check Audio Devices
+# List devices
+Get-AudioDevice -List
+
+# Check Windows Audio service
+Get-Service -Name "Audiosrv" | Restart-Service
+
+# Verify device drivers
+# Device Manager → Sound, video and game controllers
+```
+
+Ensure microphone permissions are granted:
+- Settings → Privacy → Microphone → Allow apps to access microphone
+</Accordion>
+
+</AccordionGroup>
+
+### Build Errors
+
+<CodeGroup>
+
+```powershell Clean Build
+# Remove all build artifacts
+cd frontend
+Remove-Item -Recurse -Force node_modules
+Remove-Item -Recurse -Force src-tauri\target
+Remove-Item -Force package-lock.json
+
+# Reinstall and rebuild
+pnpm install
+.\build-gpu.bat
+```
+
+```powershell Debug Build
+# Enable debug logging
+$env:RUST_LOG="debug"
+.\dev-gpu.bat
+
+# Or trace level
+$env:RUST_LOG="trace"
+cargo build --release
+```
+
+```powershell Verify Environment
+# Check all tools
+Get-Command node, pnpm, rustc, cargo, cmake
+
+# Check versions
+node --version
+pnpm --version
+rustc --version
+cargo --version
+cmake --version
+```
+
+</CodeGroup>
+
+## Performance Optimization
+
+### GPU Performance
+
+<CardGroup cols={2}>
+
+<Card title="NVIDIA CUDA" icon="gpu">
+**Best for**: RTX 20/30/40 series
+
+- 5-10x faster than CPU
+- Tensor Core acceleration (RTX)
+- Best with large models
+</Card>
+
+<Card title="Vulkan" icon="microchip">
+**Best for**: AMD/Intel GPUs
+
+- 3-6x faster than CPU
+- Cross-vendor compatibility
+- Good with small/medium models
+</Card>
+
+</CardGroup>
+
+### Build Optimization
+
+```toml Cargo.toml Profile
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = false
+```
+
+### Windows-Specific Optimizations
+
+<CodeGroup>
+
+```powershell Faster Linking
+# Use lld linker
+$env:RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+
+# Or add to .cargo/config.toml
+```
+
+```toml .cargo/config.toml
+[target.x86_64-pc-windows-msvc]
+linker = "lld-link.exe"
+rustflags = ["-C", "target-cpu=native"]
+```
+
+</CodeGroup>
+
+## Development Best Practices
+
+### Code Signing
+
+For distribution, sign your executables:
+
+```powershell Sign Executable
+# Using signtool from Windows SDK
+signtool sign /f certificate.pfx /p password /t http://timestamp.digicert.com target\release\meetily.exe
+
+# Or configure in tauri.conf.json
+```
+
+### Testing
+
+```powershell Run Tests
+# Run all tests
+cargo test --all-features
+
+# Run Windows-specific tests
+cargo test --target x86_64-pc-windows-msvc -- audio::devices::platform::windows
+
+# With logging
+$env:RUST_LOG="debug"
+cargo test -- --nocapture
+```
+
+### Debugging
+
+```powershell Visual Studio Debugger
+# Build with debug symbols
+cargo build --profile release-with-debug
+
+# Or use VS Code with rust-analyzer
+# Launch configuration in .vscode/launch.json
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="macOS Development" icon="apple" href="/advanced/macos-development">
+Learn about macOS-specific setup with Metal acceleration
+</Card>
+
+<Card title="Linux Development" icon="linux" href="/advanced/linux-development">
+Explore Linux development with multiple GPU options
+</Card>
+
+<Card title="GPU Acceleration" icon="microchip" href="/configuration/gpu-acceleration">
+Deep dive into GPU acceleration configuration
+</Card>
+
+<Card title="Building from Source" icon="hammer" href="/advanced/building-from-source">
+Complete guide to building Meetily
+</Card>
+
+</CardGroup>
+
+## Resources
+
+- [NVIDIA CUDA Documentation](https://docs.nvidia.com/cuda/)
+- [Vulkan Tutorial](https://vulkan-tutorial.com/)
+- [WASAPI Documentation](https://docs.microsoft.com/en-us/windows/win32/coreaudio/wasapi)
+- [Tauri Windows Guide](https://tauri.app/v1/guides/building/windows)
+- [Rust on Windows](https://rust-lang.github.io/rustup/installation/windows.html)

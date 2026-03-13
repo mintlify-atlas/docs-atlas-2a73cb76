@@ -1,0 +1,430 @@
+---
+title: "Audio Commands"
+description: "Tauri commands for audio device management and monitoring"
+---
+
+## Overview
+
+The Audio Commands API provides access to audio devices, permission management, and real-time audio level monitoring. These commands enable device discovery, selection, and monitoring for both input (microphone) and output (system audio) devices.
+
+## Commands
+
+### get_audio_devices
+
+Retrieves a list of all available audio input and output devices on the system.
+
+**Returns**: `Promise<AudioDevice[]>`
+
+**TypeScript Interface**:
+```typescript
+interface AudioDevice {
+  name: string;
+  device_type: 'Input' | 'Output';
+  is_default: boolean;
+  sample_rate?: number;
+}
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn get_audio_devices() -> Result<Vec<AudioDevice>, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const devices = await invoke<AudioDevice[]>('get_audio_devices');
+
+const microphones = devices.filter(d => d.device_type === 'Input');
+const speakers = devices.filter(d => d.device_type === 'Output');
+
+console.log('Microphones:', microphones);
+console.log('Speakers:', speakers);
+```
+
+---
+
+### trigger_microphone_permission
+
+Triggers the system permission dialog for microphone access. Required on macOS and other systems that require explicit permission grants.
+
+**Returns**: `Promise<boolean>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn trigger_microphone_permission() -> Result<bool, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const granted = await invoke<boolean>('trigger_microphone_permission');
+if (granted) {
+  console.log('Microphone permission granted');
+} else {
+  console.log('Microphone permission denied');
+}
+```
+
+---
+
+### start_audio_level_monitoring
+
+Starts real-time audio level monitoring for specified devices. Emits periodic events with volume levels.
+
+<ParamField path="device_names" type="string[]" required>
+  Array of device names to monitor. Can include both microphone and system audio devices.
+</ParamField>
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn start_audio_level_monitoring<R: Runtime>(
+    app: AppHandle<R>,
+    device_names: Vec<String>,
+) -> Result<(), String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke, listen } from '@tauri-apps/api';
+
+// Start monitoring
+await invoke('start_audio_level_monitoring', {
+  device_names: ['Built-in Microphone', 'BlackHole 2ch']
+});
+
+// Listen for level updates
+const unlisten = await listen('audio-level-update', (event) => {
+  const { device_name, level, is_clipping } = event.payload;
+  console.log(`${device_name}: ${level}dB`);
+  if (is_clipping) {
+    console.warn('Audio clipping detected!');
+  }
+});
+```
+
+---
+
+### stop_audio_level_monitoring
+
+Stops audio level monitoring for all devices.
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn stop_audio_level_monitoring() -> Result<(), String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+await invoke('stop_audio_level_monitoring');
+```
+
+---
+
+### is_audio_level_monitoring
+
+Checks if audio level monitoring is currently active.
+
+**Returns**: `Promise<boolean>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+async fn is_audio_level_monitoring() -> bool
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const monitoring = await invoke<boolean>('is_audio_level_monitoring');
+console.log(`Monitoring active: ${monitoring}`);
+```
+
+---
+
+### get_active_audio_output
+
+Retrieves information about the currently active audio output device (playback device).
+
+**Returns**: `Promise<AudioOutputInfo>`
+
+**TypeScript Interface**:
+```typescript
+interface AudioOutputInfo {
+  device_name: string;
+  is_bluetooth: boolean;
+  is_builtin: boolean;
+}
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_active_audio_output() -> Result<AudioOutputInfo, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const output = await invoke<AudioOutputInfo>('get_active_audio_output');
+if (output.is_bluetooth) {
+  console.warn('Bluetooth playback may have audio sync issues');
+}
+console.log(`Current output: ${output.device_name}`);
+```
+
+---
+
+### poll_audio_device_events
+
+Polls for audio device events such as disconnections or reconnections. Should be called periodically (every 1-2 seconds) during recording.
+
+**Returns**: `Promise<DeviceEvent | null>`
+
+**TypeScript Interface**:
+```typescript
+type DeviceEvent = 
+  | { type: 'DeviceDisconnected'; device_name: string; device_type: string }
+  | { type: 'DeviceReconnected'; device_name: string; device_type: string }
+  | { type: 'DeviceListChanged' };
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn poll_audio_device_events() -> Result<Option<DeviceEventResponse>, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+// Poll every 2 seconds during recording
+const pollInterval = setInterval(async () => {
+  const event = await invoke<DeviceEvent | null>('poll_audio_device_events');
+  
+  if (event) {
+    if (event.type === 'DeviceDisconnected') {
+      console.warn(`Device disconnected: ${event.device_name}`);
+    } else if (event.type === 'DeviceReconnected') {
+      console.log(`Device reconnected: ${event.device_name}`);
+    }
+  }
+}, 2000);
+
+// Stop polling when recording ends
+clearInterval(pollInterval);
+```
+
+---
+
+### get_reconnection_status
+
+Returns the current device reconnection status.
+
+**Returns**: `Promise<ReconnectionStatus>`
+
+**TypeScript Interface**:
+```typescript
+interface ReconnectionStatus {
+  is_reconnecting: boolean;
+  disconnected_device: {
+    name: string;
+    device_type: string;
+  } | null;
+}
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_reconnection_status() -> Result<ReconnectionStatus, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const status = await invoke<ReconnectionStatus>('get_reconnection_status');
+if (status.is_reconnecting && status.disconnected_device) {
+  console.log(`Reconnecting to ${status.disconnected_device.name}...`);
+}
+```
+
+---
+
+### attempt_device_reconnect
+
+Manually attempts to reconnect to a disconnected device.
+
+<ParamField path="device_name" type="string" required>
+  Name of the device to reconnect.
+</ParamField>
+
+<ParamField path="device_type" type="string" required>
+  Type of device: "Microphone" or "SystemAudio".
+</ParamField>
+
+**Returns**: `Promise<boolean>` - `true` if reconnection succeeded, `false` otherwise.
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn attempt_device_reconnect(
+    device_name: String,
+    device_type: String,
+) -> Result<bool, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const success = await invoke<boolean>('attempt_device_reconnect', {
+  device_name: 'AirPods Pro',
+  device_type: 'Microphone'
+});
+
+if (success) {
+  console.log('Device reconnected successfully');
+} else {
+  console.error('Failed to reconnect device');
+}
+```
+
+---
+
+## Device Preferences
+
+### get_recording_preferences
+
+Retrieves the user's saved recording preferences including preferred devices.
+
+**Returns**: `Promise<RecordingPreferences>`
+
+**TypeScript Interface**:
+```typescript
+interface RecordingPreferences {
+  auto_save: boolean;
+  preferred_mic_device: string | null;
+  preferred_system_device: string | null;
+  recordings_folder: string;
+}
+```
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn get_recording_preferences<R: Runtime>(
+    app: AppHandle<R>
+) -> Result<RecordingPreferences, String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const prefs = await invoke<RecordingPreferences>('get_recording_preferences');
+console.log('Preferred mic:', prefs.preferred_mic_device);
+console.log('Auto-save:', prefs.auto_save);
+```
+
+---
+
+### set_recording_preferences
+
+Saves recording preferences including device selections.
+
+<ParamField path="preferences" type="RecordingPreferences" required>
+  The preferences object to save.
+</ParamField>
+
+**Returns**: `Promise<void>`
+
+**Rust Signature**:
+```rust
+#[tauri::command]
+pub async fn set_recording_preferences<R: Runtime>(
+    app: AppHandle<R>,
+    preferences: RecordingPreferences
+) -> Result<(), String>
+```
+
+**TypeScript Example**:
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+await invoke('set_recording_preferences', {
+  preferences: {
+    auto_save: true,
+    preferred_mic_device: 'Built-in Microphone',
+    preferred_system_device: 'BlackHole 2ch',
+    recordings_folder: '/Users/me/Documents/Meetily'
+  }
+});
+```
+
+---
+
+## Events
+
+### audio-level-update
+
+Emitted periodically with audio level data when monitoring is active.
+
+**TypeScript Example**:
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+interface AudioLevelUpdate {
+  device_name: string;
+  level: number; // dB value
+  is_clipping: boolean;
+  timestamp: number;
+}
+
+const unlisten = await listen<AudioLevelUpdate>('audio-level-update', (event) => {
+  const { device_name, level, is_clipping } = event.payload;
+  
+  // Update UI with audio level
+  updateLevelMeter(device_name, level);
+  
+  if (is_clipping) {
+    showClippingWarning(device_name);
+  }
+});
+```
+
+---
+
+## Platform-Specific Notes
+
+### macOS
+
+- **System Audio**: Requires Screen Recording permission to capture system audio via ScreenCaptureKit (macOS 13+)
+- **Virtual Devices**: Consider using BlackHole or similar virtual audio devices for system audio capture
+- **Permissions**: Use `trigger_microphone_permission()` and `trigger_system_audio_permission_command()` to request necessary permissions
+
+### Windows
+
+- **System Audio**: Uses WASAPI loopback for system audio capture
+- **Device Names**: May include device IDs or connection types in names
+
+### Linux
+
+- **Audio Backend**: Uses ALSA or PulseAudio depending on system configuration
+- **Permissions**: May require user to be in the `audio` group

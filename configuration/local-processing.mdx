@@ -1,0 +1,349 @@
+---
+title: Local Processing Architecture
+description: Technical deep-dive into Meetily's local-first processing engine
+---
+
+## Overview
+
+Meetily's local processing architecture ensures that all sensitive meeting data stays on your device. This page explains the technical implementation of privacy-preserving audio processing, transcription, and storage.
+
+## Audio Processing Pipeline
+
+The audio system processes microphone and system audio entirely on your device using a sophisticated multi-stage pipeline.
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Audio Input Sources                           │
+│  ┌────────────────┐              ┌────────────────────┐         │
+│  │   Microphone   │              │   System Audio     │         │
+│  │   (Local)      │              │   (Local Loopback) │         │
+│  └────────┬───────┘              └─────────┬──────────┘         │
+└───────────┼──────────────────────────────┼────────────────────┘
+            │                              │
+            ▼                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Audio Capture Layer                            │
+│  ┌────────────────────────────────────────────────────────┐     │
+│  │  Platform-Specific Capture (No Network Transmission)   │     │
+│  │  • macOS: ScreenCaptureKit API (local only)            │     │
+│  │  • Windows: WASAPI loopback (local only)               │     │
+│  │  • Linux: PulseAudio/ALSA (local only)                 │     │
+│  └────────────────────────────────────────────────────────┘     │
+└───────────┼──────────────────────────────┼────────────────────┘
+            │                              │
+            ▼                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Audio Processing Pipeline (Local)                   │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │  1. Ring Buffer Mixing (600ms windows)               │       │
+│  │  2. Professional Audio Ducking (RMS-based)           │       │
+│  │  3. Noise Suppression (RNNoise, local)               │       │
+│  │  4. Voice Activity Detection (VAD, local)            │       │
+│  └──────────────────────────────────────────────────────┘       │
+└───────────┼──────────────────────────────┼────────────────────┘
+            │                              │
+            ▼                              ▼
+     ┌─────────────┐              ┌──────────────────┐
+     │  Recording  │              │  Transcription   │
+     │  (WAV/MP3)  │              │  (Whisper/Local) │
+     └─────────────┘              └──────────────────┘
+```
+
+### Stage 1: Audio Capture
+
+**Platform-Specific Implementations** (all local, no network):
+
+- **macOS**: Uses ScreenCaptureKit API for system audio capture (requires macOS 13+)
+- **Windows**: Uses WASAPI (Windows Audio Session API) loopback mode
+- **Linux**: Uses ALSA or PulseAudio depending on system configuration
+
+**Code Location**: `frontend/src-tauri/src/audio/capture/`
+- Microphone: `capture/microphone.rs`
+- System audio: `capture/system.rs`
+- macOS specific: `capture/core_audio.rs`
+
+**Privacy Guarantee**: Audio capture APIs are OS-level, no network transmission occurs.
+
+### Stage 2: Audio Mixing
+
+The pipeline uses a ring buffer to synchronize microphone and system audio streams:
+
+```rust
+// Ring buffer for synchronized audio mixing
+struct AudioMixerRingBuffer {
+    mic_buffer: VecDeque<f32>,      // Microphone samples
+    system_buffer: VecDeque<f32>,   // System audio samples
+    window_size_samples: usize,      // 600ms mixing window
+    max_buffer_size: usize,          // 400ms safety limit
+}
+```
+
+**Key Features**:
+- **Synchronization**: Aligns audio streams from different sources
+- **RMS-Based Ducking**: Automatically reduces system audio when you speak
+- **Clipping Prevention**: Prevents audio distortion from volume peaks
+- **Local Processing**: All mixing happens in memory, never written to disk until save
+
+**Code Location**: `frontend/src-tauri/src/audio/pipeline.rs:16-96`
+
+### Stage 3: Noise Suppression
+
+Meetily uses **RNNoise** (Recurrent Neural Network Noise suppression) running entirely locally:
+
+- **Algorithm**: Deep learning-based noise reduction
+- **Processing**: Runs on your CPU (no GPU required)
+- **Privacy**: Model runs locally, no data sent to servers
+- **Performance**: Real-time processing with minimal CPU overhead
+
+**Implementation**: Uses the `nnnoiseless` Rust crate for local noise suppression.
+
+**Code Location**: `frontend/src-tauri/src/audio/audio_processing.rs`
+
+### Stage 4: Voice Activity Detection (VAD)
+
+VAD filters out silence and non-speech segments before transcription:
+
+- **Purpose**: Reduces transcription workload by ~70%
+- **Processing**: Local algorithm analyzes audio energy and patterns
+- **Privacy**: No data leaves your device
+- **Efficiency**: Only speech segments sent to Whisper
+
+**Code Location**: `frontend/src-tauri/src/audio/vad.rs`
+
+## Local Transcription Engine
+
+Meetily supports two local transcription engines, both running entirely on your device.
+
+### Whisper (Primary Engine)
+
+**Overview**: OpenAI's Whisper model running locally via `whisper.cpp`
+
+**Architecture**:
+```
+┌─────────────────────────────────────────┐
+│      Whisper Transcription Engine       │
+│                                         │
+│  ┌────────────────────────────────┐    │
+│  │  Model Loading (Local Files)   │    │
+│  │  • ~/Library/.../models/       │    │
+│  │  • No network required          │    │
+│  └──────────────┬─────────────────┘    │
+│                 ▼                       │
+│  ┌────────────────────────────────┐    │
+│  │  GPU Acceleration (Optional)   │    │
+│  │  • macOS: Metal + CoreML       │    │
+│  │  • Windows: CUDA/Vulkan        │    │
+│  │  • Linux: CUDA/Vulkan          │    │
+│  │  • Fallback: CPU               │    │
+│  └──────────────┬─────────────────┘    │
+│                 ▼                       │
+│  ┌────────────────────────────────┐    │
+│  │  Local Inference               │    │
+│  │  • Audio → Text (on device)   │    │
+│  │  • No API calls                │    │
+│  └────────────────────────────────┘    │
+└─────────────────────────────────────────┘
+```
+
+**Model Storage Locations**:
+
+- **Development**: `frontend/models/`
+- **Production (macOS)**: `~/Library/Application Support/Meetily/models/`
+- **Production (Windows)**: `%APPDATA%\Meetily\models\`
+- **Production (Linux)**: `~/.local/share/Meetily/models/`
+
+**Available Models** (all run locally):
+
+| Model | Size | Accuracy | Speed | Use Case |
+|-------|------|----------|-------|----------|
+| tiny | 74 MB | Decent | Very Fast | Real-time, testing |
+| base | 142 MB | Good | Fast | Quick meetings |
+| small | 466 MB | Good | Medium | Balanced quality |
+| medium | 1.5 GB | High | Slow | Professional use |
+| large-v3-turbo | 1.5 GB | High | Medium | Recommended |
+| large-v3 | 3 GB | Highest | Slow | Maximum accuracy |
+
+**GPU Acceleration**:
+- **macOS**: Automatic Metal + CoreML acceleration
+- **Windows/Linux**: Optional CUDA (NVIDIA) or Vulkan (AMD/Intel) support
+- **Fallback**: CPU-only processing (still fully local)
+
+**Code Location**: `frontend/src-tauri/src/whisper_engine/whisper_engine.rs:1-500`
+
+**Privacy Features**:
+```rust
+// GPU detection - all happens locally
+fn detect_gpu_acceleration() -> bool {
+    #[cfg(target_os = "macos")]
+    return true; // Metal acceleration (local)
+    
+    #[cfg(feature = "cuda")]
+    return true; // CUDA acceleration (local)
+    
+    false // CPU fallback (still local)
+}
+```
+
+### Parakeet (Alternative Engine)
+
+**Overview**: NVIDIA's Parakeet TDT model, optimized for speed
+
+**Key Features**:
+- **Smaller Size**: 600MB quantized model
+- **Faster**: Optimized for real-time transcription
+- **Local Processing**: No network required
+- **Use Case**: Resource-constrained devices
+
+**Code Location**: `frontend/src-tauri/src/parakeet_engine/`
+
+## Local Data Storage
+
+All meeting data is stored locally in structured formats.
+
+### Database (SQLite)
+
+**Location**: 
+- macOS: `~/Library/Application Support/Meetily/meeting_minutes.sqlite`
+- Windows: `%APPDATA%\Meetily\meeting_minutes.sqlite`
+- Linux: `~/.local/share/Meetily/meeting_minutes.sqlite`
+
+**Schema**:
+```sql
+-- Meetings table
+CREATE TABLE meetings (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    folder_path TEXT  -- Path to meeting folder
+);
+
+-- Transcripts table
+CREATE TABLE transcripts (
+    id TEXT PRIMARY KEY,
+    meeting_id TEXT NOT NULL,
+    transcript TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    audio_start_time REAL,  -- Sync with recording
+    audio_end_time REAL,
+    duration REAL,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+**Code Location**: `backend/app/db.py:45-98`
+
+### Meeting Folders
+
+**Structure**:
+```
+~/Downloads/MeetingName_2024-03-13_14-30/
+├── audio.wav              # Full recording
+├── metadata.json          # Meeting info
+└── transcripts.json       # Timestamped transcripts
+```
+
+**Metadata Format** (`metadata.json`):
+```json
+{
+  "version": "1.0",
+  "meeting_id": "uuid-here",
+  "meeting_name": "Team Standup",
+  "created_at": "2024-03-13T14:30:00Z",
+  "duration_seconds": 1800,
+  "devices": {
+    "microphone": "Built-in Microphone",
+    "system_audio": "BlackHole 2ch"
+  },
+  "audio_file": "audio.wav",
+  "transcript_file": "transcripts.json",
+  "sample_rate": 48000,
+  "status": "completed"
+}
+```
+
+**Code Location**: `frontend/src-tauri/src/audio/recording_saver.rs:27-47`
+
+## Optional LLM Summarization
+
+Summary generation is **optional** and uses your chosen provider:
+
+### Local Option: Ollama
+
+**Recommended for Privacy**:
+- Runs LLM models entirely on your device
+- No internet connection required
+- Full control over model and prompts
+
+**Supported Models**:
+- Llama 3.2 (3B, 8B)
+- Mistral (7B)
+- Gemma 2 (9B)
+- Any Ollama-compatible model
+
+**How It Works**:
+1. You install Ollama separately
+2. Meetily connects to local Ollama server (`http://localhost:11434`)
+3. Transcript sent to local model (never leaves device)
+4. Summary generated locally
+
+### External Options (Explicit Choice)
+
+If you choose external LLM providers:
+
+- **Anthropic Claude**: Transcript sent to Anthropic API
+- **Groq**: Transcript sent to Groq API
+- **OpenRouter**: Transcript sent via OpenRouter
+
+**Important**: You explicitly choose when to use these services. Meetily will:
+1. Show which provider you're using
+2. Require API key configuration
+3. Only send data when you click "Generate Summary"
+
+**Code Location**: `frontend/src-tauri/src/summary/llm_client.rs`
+
+## Privacy Verification
+
+### How to Verify Local Processing
+
+1. **Network Monitoring**: Use tools like Wireshark or Little Snitch to monitor network traffic
+   - No outbound connections during recording/transcription (except if you enable analytics)
+   - Only LLM API calls when you explicitly request summaries
+
+2. **Source Code Audit**: Review the open-source code
+   - `audio/` module: No network calls
+   - `whisper_engine/`: No external API usage
+   - `database/`: Local SQLite only
+
+3. **File System Inspection**: Check data locations
+   - All files stored in documented local directories
+   - No hidden uploads or cloud sync
+
+## Performance Optimization
+
+### Local Processing Performance
+
+**Transcription Speed** (varies by model and hardware):
+- **With GPU (Metal/CUDA)**: 5-10x faster than real-time
+- **CPU Only**: 1-3x real-time speed
+- **VAD Filtering**: Reduces processing by ~70%
+
+**Resource Usage**:
+- **CPU**: 10-30% during transcription
+- **Memory**: 1-4 GB depending on model size
+- **Storage**: ~10 MB per hour of meeting (audio + transcripts)
+
+### Optimization Tips
+
+1. **Use GPU Acceleration**: Enable Metal (macOS) or CUDA/Vulkan (Windows/Linux)
+2. **Choose Right Model**: Balance accuracy vs. speed (large-v3-turbo recommended)
+3. **Enable VAD**: Reduces processing load significantly
+4. **Use Noise Suppression**: Improves transcription accuracy
+
+## Related Documentation
+
+- [Privacy Guarantees](/configuration/privacy)
+- [Data Storage Locations](/configuration/data-storage)
+- [GPU Acceleration Guide](/configuration/gpu-acceleration)

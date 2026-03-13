@@ -1,0 +1,432 @@
+---
+title: 'Meeting Endpoints'
+description: 'CRUD operations for managing meetings'
+icon: 'calendar'
+---
+
+## Get All Meetings
+
+<CodeGroup>
+```bash cURL
+curl http://localhost:5167/get-meetings
+```
+
+```python Python
+import requests
+
+response = requests.get("http://localhost:5167/get-meetings")
+meetings = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch('http://localhost:5167/get-meetings');
+const meetings = await response.json();
+```
+</CodeGroup>
+
+Retrieve a list of all meetings with basic information.
+
+### Response
+
+<ResponseField name="meetings" type="array" required>
+  Array of meeting objects
+  
+  <Expandable title="Meeting Object">
+    <ResponseField name="id" type="string" required>
+      Unique meeting identifier (e.g., `meeting-1704067200000`)
+    </ResponseField>
+    
+    <ResponseField name="title" type="string" required>
+      Meeting title
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string" required>
+      ISO 8601 timestamp of creation
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "meeting-1704067200000",
+    "title": "Team Standup",
+    "created_at": "2024-01-01T09:00:00"
+  },
+  {
+    "id": "meeting-1704153600000",
+    "title": "Product Review",
+    "created_at": "2024-01-02T14:30:00"
+  }
+]
+```
+</ResponseExample>
+
+---
+
+## Get Meeting by ID
+
+<CodeGroup>
+```bash cURL
+curl http://localhost:5167/get-meeting/meeting-1704067200000
+```
+
+```python Python
+import requests
+
+meeting_id = "meeting-1704067200000"
+response = requests.get(f"http://localhost:5167/get-meeting/{meeting_id}")
+meeting = response.json()
+```
+
+```typescript TypeScript
+const meetingId = 'meeting-1704067200000';
+const response = await fetch(`http://localhost:5167/get-meeting/${meetingId}`);
+const meeting = await response.json();
+```
+</CodeGroup>
+
+Retrieve detailed information about a specific meeting, including all transcript segments.
+
+### Path Parameters
+
+<ParamField path="meeting_id" type="string" required>
+  The unique identifier of the meeting
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string" required>
+  Meeting identifier
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Meeting title
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp of creation
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+<ResponseField name="transcripts" type="array" required>
+  Array of transcript segments
+  
+  <Expandable title="Transcript Object">
+    <ResponseField name="id" type="string" required>
+      Transcript segment identifier
+    </ResponseField>
+    
+    <ResponseField name="text" type="string" required>
+      Transcript text content
+    </ResponseField>
+    
+    <ResponseField name="timestamp" type="string" required>
+      Timestamp when the segment was created
+    </ResponseField>
+    
+    <ResponseField name="audio_start_time" type="number">
+      Recording-relative start time in seconds (for audio sync)
+    </ResponseField>
+    
+    <ResponseField name="audio_end_time" type="number">
+      Recording-relative end time in seconds (for audio sync)
+    </ResponseField>
+    
+    <ResponseField name="duration" type="number">
+      Duration of the segment in seconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "id": "meeting-1704067200000",
+  "title": "Team Standup",
+  "created_at": "2024-01-01T09:00:00",
+  "updated_at": "2024-01-01T09:30:00",
+  "transcripts": [
+    {
+      "id": "meeting-1704067200000",
+      "text": "Good morning everyone. Let's start with updates.",
+      "timestamp": "2024-01-01T09:00:15",
+      "audio_start_time": 0.0,
+      "audio_end_time": 3.5,
+      "duration": 3.5
+    },
+    {
+      "id": "meeting-1704067200000",
+      "text": "I finished the authentication module yesterday.",
+      "timestamp": "2024-01-01T09:00:45",
+      "audio_start_time": 30.0,
+      "audio_end_time": 33.2,
+      "duration": 3.2
+    }
+  ]
+}
+```
+
+```json 404 - Not Found
+{
+  "detail": "Meeting not found"
+}
+```
+</ResponseExample>
+
+---
+
+## Update Meeting Title
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5167/save-meeting-title \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meeting_id": "meeting-1704067200000",
+    "title": "Updated Team Standup"
+  }'
+```
+
+```python Python
+import requests
+
+data = {
+    "meeting_id": "meeting-1704067200000",
+    "title": "Updated Team Standup"
+}
+response = requests.post(
+    "http://localhost:5167/save-meeting-title",
+    json=data
+)
+```
+
+```typescript TypeScript
+const response = await fetch('http://localhost:5167/save-meeting-title', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    meeting_id: 'meeting-1704067200000',
+    title: 'Updated Team Standup'
+  })
+});
+```
+</CodeGroup>
+
+Update the title of an existing meeting.
+
+### Request Body
+
+<ParamField body="meeting_id" type="string" required>
+  The unique identifier of the meeting to update
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  The new title for the meeting
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string" required>
+  Success message
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "message": "Meeting title saved successfully"
+}
+```
+
+```json 500 - Error
+{
+  "detail": "Error message"
+}
+```
+</ResponseExample>
+
+---
+
+## Delete Meeting
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5167/delete-meeting \
+  -H "Content-Type: application/json" \
+  -d '{"meeting_id": "meeting-1704067200000"}'
+```
+
+```python Python
+import requests
+
+data = {"meeting_id": "meeting-1704067200000"}
+response = requests.post(
+    "http://localhost:5167/delete-meeting",
+    json=data
+)
+```
+
+```typescript TypeScript
+const response = await fetch('http://localhost:5167/delete-meeting', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    meeting_id: 'meeting-1704067200000'
+  })
+});
+```
+</CodeGroup>
+
+<Warning>
+  This permanently deletes the meeting and all associated transcripts, summaries, and processing data. This action cannot be undone.
+</Warning>
+
+Delete a meeting and all its associated data.
+
+### Request Body
+
+<ParamField body="meeting_id" type="string" required>
+  The unique identifier of the meeting to delete
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string" required>
+  Success or failure message
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "message": "Meeting deleted successfully"
+}
+```
+
+```json 500 - Error
+{
+  "detail": "Failed to delete meeting"
+}
+```
+</ResponseExample>
+
+---
+
+## Search Transcripts
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5167/search-transcripts \
+  -H "Content-Type: application/json" \
+  -d '{"query": "action items"}'
+```
+
+```python Python
+import requests
+
+data = {"query": "action items"}
+response = requests.post(
+    "http://localhost:5167/search-transcripts",
+    json=data
+)
+results = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch('http://localhost:5167/search-transcripts', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ query: 'action items' })
+});
+const results = await response.json();
+```
+</CodeGroup>
+
+Search through all meeting transcripts for a specific query. The search is case-insensitive and returns context around each match.
+
+### Request Body
+
+<ParamField body="query" type="string" required>
+  Search query string
+</ParamField>
+
+### Response
+
+<ResponseField name="results" type="array" required>
+  Array of search results
+  
+  <Expandable title="Result Object">
+    <ResponseField name="id" type="string" required>
+      Meeting identifier
+    </ResponseField>
+    
+    <ResponseField name="title" type="string" required>
+      Meeting title
+    </ResponseField>
+    
+    <ResponseField name="matchContext" type="string" required>
+      Text snippet showing the match with surrounding context (±100 characters)
+    </ResponseField>
+    
+    <ResponseField name="timestamp" type="string" required>
+      Timestamp of the transcript segment
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "meeting-1704067200000",
+    "title": "Team Standup",
+    "matchContext": "...need to complete the action items from yesterday. First, deploy the new feature...",
+    "timestamp": "2024-01-01T09:05:30"
+  },
+  {
+    "id": "meeting-1704153600000",
+    "title": "Product Review",
+    "matchContext": "...the main action items for this sprint are: complete the UI redesign and...",
+    "timestamp": "2024-01-02T14:45:00"
+  }
+]
+```
+</ResponseExample>
+
+---
+
+## Data Models
+
+### MeetingResponse
+```typescript
+interface MeetingResponse {
+  id: string;          // Unique identifier
+  title: string;       // Meeting title
+}
+```
+
+### MeetingDetailsResponse
+```typescript
+interface MeetingDetailsResponse {
+  id: string;
+  title: string;
+  created_at: string;  // ISO 8601
+  updated_at: string;  // ISO 8601
+  transcripts: Transcript[];
+}
+```
+
+### Transcript
+```typescript
+interface Transcript {
+  id: string;
+  text: string;
+  timestamp: string;
+  audio_start_time?: number;  // Recording-relative seconds
+  audio_end_time?: number;    // Recording-relative seconds
+  duration?: number;          // Duration in seconds
+}
+```

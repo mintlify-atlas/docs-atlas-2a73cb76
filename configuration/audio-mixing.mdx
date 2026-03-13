@@ -1,0 +1,476 @@
+---
+title: Audio Mixing
+description: Configure professional audio mixing features including RMS-based ducking, clipping prevention, and voice activity detection
+---
+
+## Overview
+
+Meetily features a professional audio pipeline that intelligently mixes microphone and system audio while maintaining broadcast-quality output. The mixing engine uses advanced techniques to prevent distortion, balance audio levels, and filter silence.
+
+## Audio Pipeline Architecture
+
+### Dual-Path Processing
+
+Meetily processes audio through **two parallel paths** with different purposes:
+
+```
+Raw Audio (Mic + System)
+         ↓
+┌────────────────────────────────────────┐
+│      Audio Pipeline Manager            │
+│  (pipeline.rs)                         │
+└────────┬──────────────────┬────────────┘
+         ↓                  ↓
+┌────────────────┐  ┌──────────────────┐
+│ Recording Path │  │ Transcription    │
+│ (Pre-mixed)    │  │ Path (VAD)       │
+└────────────────┘  └──────────────────┘
+         ↓                  ↓
+   Audio File          Whisper Engine
+   (Mixed output)      (Speech only)
+```
+
+**Recording Path:**
+- Applies professional mixing (ducking, clipping prevention)
+- Combines microphone + system audio
+- Saves to audio file (MP3, WAV, FLAC)
+- Optimized for high-fidelity playback
+
+**Transcription Path:**
+- Applies Voice Activity Detection (VAD)
+- Sends only speech segments to Whisper
+- Reduces transcription load by ~70%
+- Optimized for accuracy and performance
+
+## Ring Buffer Mixing
+
+### Synchronization Strategy
+
+Microphone and system audio streams arrive **asynchronously** at different rates. Meetily uses a ring buffer to synchronize them:
+
+**Key Parameters:**
+- **Window size**: 600ms (28,800 samples at 48kHz)
+- **Max buffer size**: 400ms × window (115,200 samples)
+- **Sample rate**: 48kHz (normalized from all devices)
+
+### How It Works
+
+1. **Buffering**: Incoming samples accumulate in separate ring buffers (mic and system)
+2. **Window extraction**: When either buffer reaches window size, extract aligned windows
+3. **Padding**: If one stream has insufficient data, pad with silence (zeros)
+4. **Mixing**: Apply professional mixing to the aligned windows
+5. **Overflow protection**: Drop oldest samples if buffer exceeds 400ms
+
+**Configuration** (in `pipeline.rs`):
+
+```rust
+struct AudioMixerRingBuffer {
+    mic_buffer: VecDeque<f32>,
+    system_buffer: VecDeque<f32>,
+    window_size_samples: usize,  // 600ms @ 48kHz = 28,800 samples
+    max_buffer_size: usize,      // 400ms × window for stability
+}
+```
+
+<Note>
+The 400ms max buffer size accounts for CoreAudio jitter, RNNoise buffering, and processing delays, especially on macOS where ScreenCaptureKit streams samples individually.
+</Note>
+
+### Buffer Overflow Warnings
+
+If you see buffer overflow warnings in logs, it indicates timing issues:
+
+**Microphone buffer overflow:**
+```
+⚠️ Microphone buffer overflow: 120000 > 115200 samples, dropping oldest 4800 samples
+```
+- Usually indicates system under heavy load
+- Oldest samples are dropped (least impactful)
+
+**System audio buffer overflow:**
+```
+🔴 SYSTEM AUDIO BUFFER OVERFLOW: 130000 > 115200 samples, dropping 14800 samples
+```
+- More serious: causes audio distortion and sync issues
+- Check CPU usage and close resource-heavy applications
+- Consider increasing `max_buffer_size` if persistent
+
+## Professional Mixing Algorithm
+
+### Soft Scaling (Clipping Prevention)
+
+Meetily uses **proportional soft scaling** instead of hard clipping to prevent distortion:
+
+```rust
+impl ProfessionalAudioMixer {
+    fn mix_window(&mut self, mic_window: &[f32], sys_window: &[f32]) -> Vec<f32> {
+        for i in 0..max_len {
+            let mic = mic_window.get(i).copied().unwrap_or(0.0);
+            let sys = sys_window.get(i).copied().unwrap_or(0.0);
+            
+            // Pre-scale system audio to 100% (mic at 80% reserved for future)
+            let sys_scaled = sys * 1.0;
+            let sum = mic + sys_scaled;
+            
+            // Soft scaling: if sum exceeds ±1.0, scale proportionally
+            let sum_abs = sum.abs();
+            let mixed_sample = if sum_abs > 1.0 {
+                sum / sum_abs  // Scale to fit within ±1.0
+            } else {
+                sum
+            };
+        }
+    }
+}
+```
+
+**Why soft scaling?**
+- Hard clipping (`sum.clamp(-1.0, 1.0)`) creates harsh distortion
+- Proportional scaling preserves wave shape, avoiding "radio break" artifacts
+- Maintains broadcast-quality output even with loud audio
+
+### Level Balancing
+
+**Current configuration:**
+- Microphone: 100% (already normalized to -23 LUFS by `LoudnessNormalizer`)
+- System audio: 100% (leaves headroom for soft scaling)
+
+**Loudness normalization** (applied before mixing):
+- Target: -23 LUFS (broadcast standard)
+- Algorithm: RMS-based with peak limiting
+- Applied per-chunk in real-time
+
+<Info>
+Future versions may add configurable microphone/system audio balance ratios. The current 1:1 ratio works well for most meeting scenarios.
+</Info>
+
+## Voice Activity Detection (VAD)
+
+### Silero VAD Integration
+
+Meetily uses [Silero VAD](https://github.com/snakers4/silero-vad) for speech detection:
+
+**Key features:**
+- Deep learning model optimized for speech detection
+- Processes 30ms chunks at 16kHz
+- Returns speech segments (not individual chunks)
+- Filters silence before sending to Whisper
+
+### VAD Configuration
+
+**Parameters** (in `vad.rs`):
+
+```rust
+let mut config = VadConfig::default();
+config.sample_rate = 16000;  // Required by Silero
+
+// Speech detection thresholds
+config.positive_speech_threshold = 0.50;  // Detect speech start
+config.negative_speech_threshold = 0.35;  // Detect speech end
+
+// Timing parameters
+config.redemption_time = Duration::from_millis(2000);  // Bridge pauses
+config.pre_speech_pad = Duration::from_millis(300);    // Context before
+config.post_speech_pad = Duration::from_millis(400);   // Context after
+config.min_speech_time = Duration::from_millis(250);   // Prevent fragments
+```
+
+**What these mean:**
+
+| Parameter | Purpose | Effect |
+|-----------|---------|--------|
+| `positive_speech_threshold` | Confidence to start speech segment | Lower = more sensitive (may include noise) |
+| `negative_speech_threshold` | Confidence to end speech segment | Higher = ends earlier (may cut off words) |
+| `redemption_time` | Bridge natural pauses in continuous speech | 2000ms allows "um", breaths, pauses |
+| `pre_speech_pad` | Include audio before speech detection | 300ms captures sentence starts |
+| `post_speech_pad` | Include audio after speech detection | 400ms captures sentence ends |
+| `min_speech_time` | Reject segments shorter than this | 250ms prevents tiny fragments |
+
+### Resampling for VAD
+
+Silero VAD **requires 16kHz audio**, but Meetily records at 48kHz. The VAD processor automatically resamples:
+
+```rust
+fn resample_to_16k(&self, samples: &[f32]) -> Result<Vec<f32>> {
+    let ratio = self.sample_rate as f64 / 16000.0;  // 48000/16000 = 3.0
+    
+    // Apply low-pass filter to prevent aliasing
+    let filtered_samples = apply_simple_lowpass(samples);
+    
+    // Linear interpolation downsampling
+    for i in 0..output_len {
+        let source_pos = i as f64 * ratio;
+        // Interpolate between adjacent samples
+    }
+}
+```
+
+**Why this matters:**
+- Downsampling without filtering creates aliasing artifacts
+- Low-pass filter removes frequencies above Nyquist (8kHz for 16kHz sample rate)
+- Linear interpolation provides smooth resampling
+
+### VAD Performance Impact
+
+Enabling VAD reduces Whisper processing by **~70%**:
+
+**Without VAD:**
+- All audio sent to Whisper (including silence)
+- 10-minute meeting = 10 minutes of processing
+
+**With VAD:**
+- Only speech segments sent to Whisper
+- 10-minute meeting with 30% speech = ~3 minutes of processing
+- Faster transcription with same accuracy
+
+## Noise Processing
+
+### RNNoise Suppression
+
+Meetily optionally applies [RNNoise](https://jmvalin.ca/demo/rnnoise/) noise suppression:
+
+```rust
+pub struct NoiseSuppressionProcessor {
+    denoiser: DenoiseState<'static>,
+    frame_size: usize,  // 480 samples (10ms at 48kHz)
+}
+
+impl NoiseSuppressionProcessor {
+    pub fn process(&mut self, samples: &[f32]) -> Vec<f32> {
+        // Process in 480-sample chunks
+        for chunk in samples.chunks(480) {
+            self.denoiser.process_frame(&mut frame);
+        }
+    }
+}
+```
+
+**When to use:**
+- Noisy environments (traffic, air conditioning, background chatter)
+- Low-quality microphones
+- Recordings with echo
+
+**Trade-offs:**
+- Adds ~10ms processing latency per chunk
+- Can remove some natural voice characteristics
+- Increases CPU usage slightly
+
+<Warning>
+RNNoise works best with stationary noise (constant hum). It may struggle with non-stationary noise (keyboard typing, door slams).
+</Warning>
+
+### High-Pass Filter
+
+Removes low-frequency rumble and handling noise:
+
+```rust
+pub struct HighPassFilter {
+    cutoff_freq: f32,  // Default: 80 Hz
+    prev_input: f32,
+    prev_output: f32,
+}
+```
+
+**Effect:**
+- Removes frequencies below 80 Hz (sub-bass)
+- Cleans up microphone handling noise, desk vibrations
+- Preserves voice (fundamental frequency ~85-255 Hz)
+
+## Audio Normalization
+
+### Loudness Normalization (LUFS)
+
+Meetily normalizes audio to broadcast standard **-23 LUFS** (Loudness Units Full Scale):
+
+```rust
+pub struct LoudnessNormalizer {
+    target_lufs: f32,  // -23.0 LUFS (broadcast standard)
+}
+
+impl LoudnessNormalizer {
+    pub fn normalize(&mut self, samples: &[f32]) -> Vec<f32> {
+        // Calculate current LUFS
+        let current_lufs = self.calculate_lufs(samples);
+        
+        // Calculate gain adjustment
+        let gain_db = self.target_lufs - current_lufs;
+        let gain_linear = 10.0f32.powf(gain_db / 20.0);
+        
+        // Apply gain with limiting
+        samples.iter().map(|&s| s * gain_linear).collect()
+    }
+}
+```
+
+**Why -23 LUFS?**
+- EBU R128 broadcast standard (used by Netflix, Spotify, YouTube)
+- Prevents loudness war (competing to be louder)
+- Comfortable listening level across all recordings
+
+### Peak Normalization vs. LUFS
+
+**Peak normalization** (old method, **not used**):
+```rust
+let peak = samples.iter().max();
+let gain = 1.0 / peak;  // Scale to ±1.0
+```
+
+**Problems:**
+- Single loud peak makes entire audio quiet
+- Doesn't account for perceived loudness
+- Inconsistent levels across recordings
+
+**LUFS normalization** (current method):
+- Measures average perceived loudness (RMS-based)
+- Consistent levels even with varying peak levels
+- Industry standard for professional audio
+
+## Mixing Window Size
+
+### Why 600ms Windows?
+
+Meetily uses **600ms mixing windows** (increased from 50ms in earlier versions):
+
+**Rationale:**
+1. **Reduces buffer churn**: Fewer window extractions = less CPU overhead
+2. **Accommodates jitter**: CoreAudio on macOS can have significant timing jitter
+3. **Batch efficiency**: Larger batches for downstream processing (RNNoise, VAD)
+4. **Latency acceptable**: 600ms is imperceptible in non-real-time recording
+
+**Trade-offs:**
+
+| Window Size | Pros | Cons |
+|-------------|------|------|
+| 50ms | Low latency, responsive | High buffer churn, CPU overhead |
+| 600ms | Efficient batching, stable | Higher latency (irrelevant for recording) |
+
+<Info>
+For real-time monitoring or live streaming, smaller windows (50-100ms) would be preferred. For recording transcription, 600ms is optimal.
+</Info>
+
+## Troubleshooting
+
+### Audio Distortion / "Radio Break" Sound
+
+**Symptoms:** Harsh clipping, crackling, sounds like radio interference.
+
+**Causes:**
+1. Hard clipping (not soft scaling)
+2. Buffer overflow (system audio dropped)
+3. Sample rate mismatch
+
+**Solutions:**
+1. Verify soft scaling is enabled (should be default)
+2. Check logs for buffer overflow warnings
+3. Close resource-heavy applications to reduce CPU load
+4. Ensure all devices are using 48kHz sample rate
+
+### Microphone Too Quiet / System Audio Too Loud
+
+**Symptoms:** Imbalanced mix, can't hear speaker or system audio drowns out mic.
+
+**Solutions:**
+1. Check microphone input gain in system settings (aim for -12 to -6 dB)
+2. Reduce system volume before recording (50-70% recommended)
+3. Use external audio interface for better gain control
+4. Future: Adjustable mix ratio (not yet implemented)
+
+### Voice Activity Detection Missing Speech
+
+**Symptoms:** Transcripts missing words, incomplete sentences.
+
+**Causes:**
+1. `positive_speech_threshold` too high (misses quiet speech)
+2. `min_speech_time` too long (rejects short utterances)
+3. `redemption_time` too short (fragments continuous speech)
+
+**Solutions:**
+1. Lower `positive_speech_threshold` (try 0.40-0.45)
+2. Reduce `min_speech_time` (try 150ms)
+3. Increase `redemption_time` (try 3000ms for conversational speech)
+4. Check microphone gain (VAD works best with good SNR)
+
+### Audio Sync Drift
+
+**Symptoms:** Microphone and system audio slowly go out of sync over long recordings.
+
+**Causes:**
+1. Sample rate mismatch (devices reporting different rates)
+2. Bluetooth device with variable sample rate
+3. Buffer overflow causing sample loss
+
+**Solutions:**
+1. Use wired devices (avoid Bluetooth for long recordings)
+2. Let Meetily auto-fallback to built-in devices on macOS
+3. Check buffer overflow warnings in logs
+4. Verify both devices are truly 48kHz (check system audio settings)
+
+### High CPU Usage During Recording
+
+**Symptoms:** Fans spinning, application sluggish, other apps slow.
+
+**Causes:**
+1. RNNoise enabled (adds processing overhead)
+2. VAD resampling (48kHz → 16kHz conversion)
+3. Multiple recordings simultaneously
+4. High sample rate (96kHz → 48kHz conversion)
+
+**Solutions:**
+1. Disable RNNoise if not needed
+2. Close other applications during recording
+3. Use 48kHz native devices (avoid resampling)
+4. Check Activity Monitor / Task Manager for other processes
+
+## Advanced Configuration
+
+### Custom Mixing Ratios (Future)
+
+While not yet exposed in the UI, you can modify mixing ratios in the source:
+
+```rust
+// In pipeline.rs - ProfessionalAudioMixer::mix_window()
+let mic_scaled = mic * 0.8;      // 80% microphone
+let sys_scaled = sys * 0.6;      // 60% system audio
+let sum = mic_scaled + sys_scaled;
+```
+
+<Warning>
+Modifying source code requires rebuilding the application. This is an advanced operation not recommended for most users.
+</Warning>
+
+### Disabling VAD
+
+To send all audio to Whisper (no silence filtering):
+
+```rust
+// In recording_manager.rs - comment out VAD processing
+// let speech_segments = self.vad_processor.process_audio(&mixed_audio)?;
+// Instead, create artificial segment:
+let full_segment = SpeechSegment {
+    samples: mixed_audio.clone(),
+    start_timestamp_ms: 0.0,
+    end_timestamp_ms: duration_ms,
+    confidence: 1.0,
+};
+```
+
+This increases transcription load but ensures no speech is missed.
+
+### Custom VAD Models
+
+Silero VAD is hardcoded, but you can swap for other models:
+
+1. Implement the `VadProcessor` trait
+2. Replace `ContinuousVadProcessor` in `recording_manager.rs`
+3. Ensure output format matches (Vec of SpeechSegment)
+
+Alternative VAD models:
+- WebRTC VAD (simpler, faster, less accurate)
+- Pyannote VAD (more accurate, heavier)
+- Custom threshold-based (very simple)
+
+## See Also
+
+- [Audio Devices Configuration](/configuration/audio-devices) - Device selection and permissions
+- [System Audio Capture](/configuration/system-audio) - Platform-specific capture details
+- [Whisper Models](/configuration/whisper-models) - Transcription model configuration

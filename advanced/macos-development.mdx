@@ -1,0 +1,498 @@
+---
+title: "macOS Development"
+description: "Platform-specific development setup for macOS with Metal GPU acceleration"
+---
+
+## Overview
+
+macOS development for Meetily leverages Apple's native technologies for optimal performance. The platform automatically enables Metal GPU acceleration and CoreML, providing 10-15x faster transcription compared to CPU-only processing.
+
+## Prerequisites
+
+### Required Tools
+
+<CodeGroup>
+
+```bash Homebrew Installation
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+```bash Development Tools
+# Install required tools
+brew install cmake node pnpm
+
+# Install additional build dependencies
+brew install libomp llvm
+```
+
+```bash Rust Toolchain
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Verify installation
+rustc --version
+cargo --version
+```
+
+</CodeGroup>
+
+### System Requirements
+
+- macOS 13.0+ (Ventura or later) for ScreenCaptureKit audio capture
+- Apple Silicon (M1/M2/M3) or Intel-based Mac
+- Xcode Command Line Tools
+- 8GB RAM minimum (16GB recommended)
+
+<Note>
+Apple Silicon Macs automatically benefit from Metal GPU and CoreML acceleration with no additional configuration required.
+</Note>
+
+## Metal GPU Acceleration
+
+### Automatic Configuration
+
+Metal acceleration is enabled by default on macOS. The build system automatically detects and configures:
+
+- **Metal API**: Native GPU acceleration for Apple Silicon and modern Intel GPUs
+- **CoreML**: Additional acceleration layer for Apple Silicon chips
+- **Optimized inference**: Hardware-accelerated model execution
+
+<CodeGroup>
+
+```toml Cargo.toml Configuration
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.13.2", features = ["raw-api", "metal", "coreml"] }
+```
+
+```bash Verify Metal Support
+# Check Metal support
+system_profiler SPDisplaysDataType | grep Metal
+
+# View GPU information
+system_profiler SPDisplaysDataType
+```
+
+</CodeGroup>
+
+### Performance Characteristics
+
+| Hardware | Transcription Speed | Real-time Factor |
+|----------|-------------------|------------------|
+| Apple Silicon (M1/M2/M3) | 10-15x faster | ~10x faster than real-time |
+| Intel Mac with Metal | 5-8x faster | ~5x faster than real-time |
+| CPU-only (fallback) | Baseline | ~1x real-time |
+
+## Development Workflow
+
+### Quick Start
+
+<CodeGroup>
+
+```bash Development Mode
+# Clone the repository
+git clone https://github.com/Zackriya-Solutions/meeting-minutes
+cd meeting-minutes/frontend
+
+# Install dependencies
+pnpm install
+
+# Run in development mode with hot reload
+./clean_run.sh
+
+# Or with debug logging
+./clean_run.sh debug
+```
+
+```bash Production Build
+# Clean build for production
+./clean_build.sh
+
+# Or use the GPU-optimized build script
+./build-gpu.sh
+
+# Output location
+# src-tauri/target/release/bundle/macos/Meetily.app
+```
+
+```bash Manual Commands
+# Development server only
+pnpm run dev
+
+# Full Tauri development mode
+pnpm run tauri:dev
+
+# Production build
+pnpm run tauri:build
+```
+
+</CodeGroup>
+
+### Build Scripts
+
+The macOS build scripts automatically handle:
+
+1. **GPU Detection**: Identifies Metal-capable hardware
+2. **Sidecar Building**: Compiles `llama-helper` with Metal support
+3. **Binary Packaging**: Creates .dmg and .app bundles
+4. **Code Signing**: Handles macOS app signing (if configured)
+
+<Note>
+Metal acceleration requires no manual configuration. The build system automatically enables it for all macOS builds.
+</Note>
+
+## Audio System Configuration
+
+### ScreenCaptureKit Integration
+
+macOS 13+ uses ScreenCaptureKit for system audio capture, which provides:
+
+- **High-quality capture**: Professional-grade audio capture
+- **Low latency**: Minimal delay in audio processing
+- **App-specific capture**: Ability to capture specific application audio
+
+<CodeGroup>
+
+```bash System Audio Setup
+# Install BlackHole for system audio routing
+brew install blackhole-2ch
+
+# Configure Audio MIDI Setup:
+# 1. Open Audio MIDI Setup (in Applications/Utilities)
+# 2. Create a Multi-Output Device
+# 3. Add both your speakers and BlackHole 2ch
+# 4. Set as default output device
+```
+
+```rust Audio Capture (cidre framework)
+// Location: frontend/src-tauri/src/audio/capture/core_audio.rs
+use cidre::av::capture_device;
+
+// ScreenCaptureKit provides system-wide audio capture
+// with minimal latency and high quality
+```
+
+</CodeGroup>
+
+### Required Permissions
+
+Meetily requires the following macOS permissions:
+
+<Steps>
+
+<Step title="Microphone Access">
+Required for capturing your voice during meetings.
+
+```bash Grant via System Preferences
+System Preferences → Security & Privacy → Privacy → Microphone
+```
+</Step>
+
+<Step title="Screen Recording">
+Required for ScreenCaptureKit system audio capture.
+
+```bash Grant via System Preferences
+System Preferences → Security & Privacy → Privacy → Screen Recording
+```
+</Step>
+
+</Steps>
+
+<Warning>
+Without Screen Recording permission, system audio capture will not work, even if Microphone permission is granted.
+</Warning>
+
+## Platform-Specific Features
+
+### Tauri Configuration
+
+<CodeGroup>
+
+```json tauri.conf.json
+{
+  "bundle": {
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "frameworks": [],
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    }
+  }
+}
+```
+
+```toml Cargo.toml Features
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri = { version = "2.6.2", features = [
+  "protocol-asset",
+  "macos-private-api",
+  "tray-icon"
+]}
+```
+
+</CodeGroup>
+
+### Native APIs
+
+macOS-specific integrations:
+
+- **ScreenCaptureKit**: System audio capture (macOS 13+)
+- **CoreAudio**: Low-level audio processing
+- **Metal**: GPU-accelerated inference
+- **CoreML**: Neural network acceleration
+- **Objective-C Bindings**: Native framework access via `objc` crate
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+
+<Accordion title="Metal GPU not detected">
+**Symptoms**: Build completes but shows CPU-only mode
+
+**Solution**:
+```bash Check GPU Support
+# Verify Metal support
+system_profiler SPDisplaysDataType | grep Metal
+
+# Should show: Metal: Supported
+```
+
+Metal is enabled by default on all modern Macs. If not detected, ensure you're running macOS 10.13 or later.
+</Accordion>
+
+<Accordion title="System audio not capturing">
+**Symptoms**: Only microphone audio is captured
+
+**Solutions**:
+1. **Check macOS version**: ScreenCaptureKit requires macOS 13+
+   ```bash
+   sw_vers
+   ```
+
+2. **Verify Screen Recording permission**:
+   - System Preferences → Security & Privacy → Privacy → Screen Recording
+   - Enable for Meetily
+
+3. **Install BlackHole**:
+   ```bash
+   brew install blackhole-2ch
+   ```
+
+4. **Create Multi-Output Device**:
+   - Open Audio MIDI Setup
+   - Click "+" and select "Create Multi-Output Device"
+   - Check both your speakers and BlackHole 2ch
+</Accordion>
+
+<Accordion title="Build fails with Metal errors">
+**Symptoms**: Compilation errors related to Metal framework
+
+**Solution**:
+```bash Update Xcode Tools
+# Update Xcode Command Line Tools
+xcode-select --install
+
+# Verify installation
+xcrun --show-sdk-path
+```
+
+Ensure you have the latest Xcode Command Line Tools installed.
+</Accordion>
+
+<Accordion title="CoreML acceleration not working">
+**Symptoms**: Slow transcription on Apple Silicon
+
+**Check**:
+```bash Verify CoreML Feature
+# Check if CoreML is enabled
+cd frontend/src-tauri
+cargo tree | grep whisper-rs
+
+# Should show: whisper-rs v0.13.2 (features: raw-api, metal, coreml)
+```
+
+CoreML is automatically enabled on macOS builds. If missing, check your Cargo.toml configuration.
+</Accordion>
+
+<Accordion title="Permission dialogs keep appearing">
+**Symptoms**: macOS repeatedly asks for permissions
+
+**Solution**:
+```bash Reset Permissions
+# Reset all permissions (requires restart)
+tccutil reset All com.meetily.app
+
+# Then grant permissions again through System Preferences
+```
+</Accordion>
+
+</AccordionGroup>
+
+### Build Environment Issues
+
+<CodeGroup>
+
+```bash Clean Build
+# Remove all build artifacts
+cd frontend
+rm -rf node_modules
+rm -rf src-tauri/target
+rm -rf dist
+rm -rf out
+
+# Reinstall and rebuild
+pnpm install
+./clean_build.sh
+```
+
+```bash Debug Logging
+# Enable verbose Rust logging
+RUST_LOG=debug ./clean_run.sh
+
+# Or with trace level
+RUST_LOG=trace ./clean_run.sh
+
+# Check specific module
+RUST_LOG=app_lib::audio=debug ./clean_run.sh
+```
+
+```bash Verify Environment
+# Check all required tools
+which cmake
+which node
+which pnpm
+which rustc
+which cargo
+
+# Check versions
+node --version
+pnpm --version
+rustc --version
+cargo --version
+```
+
+</CodeGroup>
+
+## Performance Optimization
+
+### Recommended Settings
+
+For optimal performance on macOS:
+
+<CodeGroup>
+
+```bash Environment Variables
+# ~/.zshrc or ~/.bash_profile
+
+# Enable full CPU optimization
+export RUSTFLAGS="-C target-cpu=native"
+
+# Use LLD linker for faster builds
+export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="rust-lld"
+export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="rust-lld"
+```
+
+```toml Cargo.toml Profiles
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = false
+```
+
+</CodeGroup>
+
+### Metal Performance
+
+For Apple Silicon Macs:
+
+- **Large models**: Use Whisper `medium` or `large-v3` models
+- **Real-time processing**: Metal handles even large models in real-time
+- **Memory usage**: 8GB RAM sufficient for most models
+- **Thermal management**: macOS automatically manages GPU thermal throttling
+
+<Note>
+Apple Silicon M1 Pro/Max/Ultra chips have additional GPU cores that further improve transcription performance.
+</Note>
+
+## Development Best Practices
+
+### Code Signing
+
+For distribution, configure code signing:
+
+```bash Generate Certificate
+# Create a self-signed certificate (development)
+# Or use your Apple Developer certificate (distribution)
+
+# Set in environment
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name"
+```
+
+### Universal Binaries
+
+Build for both Intel and Apple Silicon:
+
+```bash Multi-Architecture Build
+# Build for Apple Silicon
+rustup target add aarch64-apple-darwin
+cargo build --release --target aarch64-apple-darwin
+
+# Build for Intel
+rustup target add x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin
+
+# Create universal binary
+lipo -create \
+  target/aarch64-apple-darwin/release/meetily \
+  target/x86_64-apple-darwin/release/meetily \
+  -output target/release/meetily-universal
+```
+
+### Testing
+
+Platform-specific tests:
+
+```bash Run Tests
+# Run all tests
+cargo test --all-features
+
+# Run only macOS-specific tests
+cargo test --target aarch64-apple-darwin -- audio::capture::core_audio
+
+# Run with logging
+RUST_LOG=debug cargo test -- --nocapture
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Windows Development" icon="windows" href="/advanced/windows-development">
+Learn about Windows-specific setup and CUDA/Vulkan configuration
+</Card>
+
+<Card title="Linux Development" icon="linux" href="/advanced/linux-development">
+Explore Linux development with CUDA, ROCm, and Vulkan options
+</Card>
+
+<Card title="Building from Source" icon="hammer" href="/advanced/building-from-source">
+Detailed guide on building Meetily from source
+</Card>
+
+<Card title="GPU Acceleration" icon="microchip" href="/configuration/gpu-acceleration">
+Deep dive into GPU acceleration across all platforms
+</Card>
+
+</CardGroup>
+
+## Resources
+
+- [Apple Metal Documentation](https://developer.apple.com/metal/)
+- [ScreenCaptureKit Framework](https://developer.apple.com/documentation/screencapturekit)
+- [CoreML Documentation](https://developer.apple.com/documentation/coreml)
+- [Tauri macOS Guide](https://tauri.app/v1/guides/building/macos)

@@ -1,0 +1,156 @@
+---
+title: 'Backend API Overview'
+description: 'Complete reference for the Meetily Backend API'
+icon: 'code'
+---
+
+## Introduction
+
+The Meetily Backend API is a FastAPI-based REST API that provides meeting management, transcript storage, and AI-powered summarization capabilities. The API runs on **port 5167** and integrates with multiple AI providers for generating meeting summaries.
+
+<Note>
+  The backend API is required for meeting persistence and LLM-based summarization features. Local transcription works without the backend.
+</Note>
+
+## Base URL
+
+```
+http://localhost:5167
+```
+
+## API Documentation
+
+Interactive API documentation is available at:
+- **Swagger UI**: http://localhost:5167/docs
+- **ReDoc**: http://localhost:5167/redoc
+
+## Architecture
+
+The backend consists of three main components:
+
+<CardGroup cols={3}>
+  <Card title="Meeting Manager" icon="calendar">
+    CRUD operations for meetings and transcripts stored in SQLite
+  </Card>
+  <Card title="Transcript Processor" icon="microchip">
+    AI-powered summarization using Ollama, Claude, Groq, or OpenAI
+  </Card>
+  <Card title="Configuration Store" icon="gear">
+    Model settings, API keys, and user preferences
+  </Card>
+</CardGroup>
+
+## Supported AI Providers
+
+The API supports multiple AI providers for generating meeting summaries:
+
+| Provider | Models | API Key Required |
+|----------|--------|------------------|
+| **Ollama** | Any local model (e.g., `llama3`, `phi4`, `qwen2.5`) | No |
+| **Claude** | `claude-3-5-sonnet-20241022`, `claude-3-opus-20240229` | Yes (Anthropic) |
+| **Groq** | `llama-3.3-70b-versatile`, `mixtral-8x7b-32768` | Yes (Groq) |
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Yes (OpenAI) |
+
+## Database Schema
+
+The backend uses SQLite with the following tables:
+
+### meetings
+Stores meeting metadata
+```sql
+CREATE TABLE meetings (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    folder_path TEXT
+);
+```
+
+### transcripts
+Stores individual transcript segments with audio sync timestamps
+```sql
+CREATE TABLE transcripts (
+    id TEXT PRIMARY KEY,
+    meeting_id TEXT NOT NULL,
+    transcript TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    audio_start_time REAL,
+    audio_end_time REAL,
+    duration REAL,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+### summary_processes
+Tracks AI summarization jobs
+```sql
+CREATE TABLE summary_processes (
+    meeting_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    result TEXT,
+    error TEXT,
+    start_time TEXT,
+    end_time TEXT,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+## CORS Configuration
+
+<Warning>
+  The API currently allows all origins (`*`) for development. Restrict this in production.
+</Warning>
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+## Error Handling
+
+All endpoints return standard HTTP status codes:
+
+| Status Code | Meaning |
+|-------------|----------|
+| `200` | Success |
+| `202` | Accepted (processing in background) |
+| `400` | Bad request (validation error) |
+| `404` | Resource not found |
+| `500` | Internal server error |
+
+Error responses include a detailed message:
+```json
+{
+  "detail": "Error message here"
+}
+```
+
+## Authentication
+
+<Info>
+  The current version does not implement authentication. All endpoints are publicly accessible on localhost.
+</Info>
+
+## Rate Limiting
+
+No rate limiting is currently implemented. AI provider rate limits apply based on your API keys.
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Meeting Endpoints" icon="calendar" href="/api/meetings">
+    Create, retrieve, update, and delete meetings
+  </Card>
+  <Card title="Transcript Endpoints" icon="file-lines" href="/api/transcripts">
+    Save and retrieve meeting transcripts
+  </Card>
+  <Card title="Summary Endpoints" icon="sparkles" href="/api/summaries">
+    Generate AI-powered meeting summaries
+  </Card>
+</CardGroup>

@@ -1,0 +1,316 @@
+---
+title: 'Claude (Anthropic)'
+description: 'Configure Claude AI for high-quality meeting summaries'
+icon: 'brain'
+---
+
+Claude by Anthropic offers powerful AI models known for their nuanced understanding and thoughtful responses, perfect for generating detailed meeting summaries.
+
+## Overview
+
+Claude is Anthropic's AI assistant, featuring:
+- **Advanced reasoning** for complex meeting analysis
+- **Large context windows** (up to 200K tokens)
+- **Safety-focused** design with built-in guardrails
+- **Nuanced understanding** of context and tone
+
+**Best for:** Detailed analysis, complex meetings, executive summaries
+
+## Prerequisites
+
+<Card title="Anthropic Account Required" icon="user">
+  You need an active Anthropic account with API access to use Claude with Meetily.
+</Card>
+
+## Setup
+
+<Steps>
+  <Step title="Create Anthropic Account">
+    Visit [console.anthropic.com](https://console.anthropic.com) and sign up for an account.
+  </Step>
+
+  <Step title="Obtain API Key">
+    1. Navigate to **API Keys** in the Anthropic Console
+    2. Click **Create Key**
+    3. Name your key (e.g., "Meetily")
+    4. Copy the API key (starts with `sk-ant-`)
+    
+    <Warning>
+      Store your API key securely. It won't be shown again after creation.
+    </Warning>
+  </Step>
+
+  <Step title="Configure in Meetily">
+    1. Open **Settings > Summary** in Meetily
+    2. Select **Claude** from the Summarization Model dropdown
+    3. An API Key field will appear
+  </Step>
+
+  <Step title="Enter API Key">
+    1. Paste your API key into the **API Key** field
+    2. Click the lock icon to secure it
+    3. Select your preferred Claude model
+    4. Click **Done** to save
+  </Step>
+</Steps>
+
+## Available Models
+
+Meetily supports the latest Claude models:
+
+### Claude Sonnet 4.5
+**Model ID:** `claude-sonnet-4-5-20250929`
+
+- **Best for:** Balanced performance and cost
+- **Context window:** 200K tokens
+- **Speed:** Fast
+- **Use case:** General meeting summaries
+
+### Claude Haiku 4.5
+**Model ID:** `claude-haiku-4-5-20251001`
+
+- **Best for:** Quick summaries on a budget
+- **Context window:** 200K tokens
+- **Speed:** Fastest
+- **Use case:** Short meetings, daily standups
+
+### Claude Opus 4.5
+**Model ID:** `claude-opus-4-5-20251101`
+
+- **Best for:** Maximum quality and depth
+- **Context window:** 200K tokens
+- **Speed:** Slower
+- **Use case:** Executive meetings, detailed analysis
+
+### Claude 3.5 Sonnet (Latest)
+**Model ID:** `claude-3-5-sonnet-latest`
+
+- **Best for:** Always-updated baseline
+- **Context window:** 200K tokens
+- **Speed:** Fast
+- **Use case:** General purpose, auto-updates
+
+<Info>
+  If you have an API key, Meetily will automatically fetch available models from Anthropic. Otherwise, the fallback models listed above will be shown.
+</Info>
+
+## API Key Management
+
+### Storing Your API Key
+
+Meetily stores your API key securely in your local database (SQLite) with these security features:
+
+1. **Local storage only** - Never transmitted except to Anthropic's API
+2. **Database encryption** - Stored in encrypted database fields
+3. **Lock protection** - UI lock prevents accidental modification
+
+### Updating Your API Key
+
+<Steps>
+  <Step title="Unlock the Field">
+    In Settings > Summary, click the **lock icon** next to the API Key field.
+  </Step>
+
+  <Step title="Update Key">
+    Paste your new API key and click the **lock icon** to secure it.
+  </Step>
+
+  <Step title="Save Changes">
+    Click **Done** to save the updated configuration.
+  </Step>
+</Steps>
+
+### Viewing Your API Key
+
+1. Navigate to **Settings > Summary**
+2. Select **Claude** as the provider
+3. Click the **eye icon** to toggle visibility
+4. The key will be shown temporarily (masked by default)
+
+## Configuration
+
+### Model Selection
+
+```typescript
+// Meetily automatically fetches available Claude models
+// based on your API key permissions
+
+// Fallback models (used when API key is not provided):
+[
+  'claude-sonnet-4-5-20250929',
+  'claude-haiku-4-5-20251001',
+  'claude-opus-4-5-20251101',
+  'claude-3-5-sonnet-latest'
+]
+```
+
+### Context Window Utilization
+
+Claude's 200K token context window means:
+- **Most meetings** fit in a single API call
+- **Reduced chunking** for better coherence
+- **Full context** preserved throughout analysis
+
+**Typical meeting sizes:**
+- 30-minute meeting: ~5,000 tokens
+- 1-hour meeting: ~10,000 tokens
+- 2-hour meeting: ~20,000 tokens
+
+## Usage Examples
+
+### Generate a Meeting Summary
+
+1. **Record** your meeting in Meetily
+2. **Stop** the recording when complete
+3. **Auto-summary** will trigger if enabled
+4. Claude will:
+   - Analyze the full transcript
+   - Extract key points and decisions
+   - Identify action items
+   - Generate a structured summary
+
+### Manual Summary Generation
+
+1. Navigate to an existing meeting
+2. Click **Generate Summary**
+3. Select Claude as the provider (if not default)
+4. Wait for processing (~10-30 seconds depending on meeting length)
+5. View the generated summary
+
+## Pricing
+
+<Warning>
+  Claude is a paid API service. Costs vary by model and usage.
+</Warning>
+
+**Estimated costs per meeting** (as of 2024):
+
+| Meeting Length | Tokens | Haiku | Sonnet | Opus |
+|---------------|--------|-------|--------|------|
+| 30 minutes | ~5K | $0.01 | $0.02 | $0.08 |
+| 1 hour | ~10K | $0.02 | $0.04 | $0.15 |
+| 2 hours | ~20K | $0.04 | $0.08 | $0.30 |
+
+<Info>
+  Pricing is approximate. Check [Anthropic's pricing page](https://www.anthropic.com/pricing) for current rates.
+</Info>
+
+### Cost Optimization Tips
+
+1. **Use Haiku for routine meetings** - Save Opus for important meetings
+2. **Enable auto-summary selectively** - Manually generate summaries for key meetings only
+3. **Monitor usage** - Check your Anthropic Console for API usage stats
+4. **Combine with local models** - Use Ollama for internal meetings, Claude for client calls
+
+## Troubleshooting
+
+### Invalid API Key
+
+**Error:** "Invalid API key" or "Authentication failed"
+
+**Solution:**
+1. Verify the API key starts with `sk-ant-`
+2. Check for extra spaces or line breaks
+3. Ensure the key hasn't been revoked in Anthropic Console
+4. Generate a new API key if needed
+
+### Rate Limit Errors
+
+**Error:** "Rate limit exceeded"
+
+**Solution:**
+1. **Free tier limits** - Upgrade to a paid plan for higher limits
+2. **Wait and retry** - Rate limits reset after a period
+3. **Reduce frequency** - Avoid generating multiple summaries simultaneously
+
+### Model Not Available
+
+**Error:** "Model not found" or model missing from dropdown
+
+**Solution:**
+1. **Check API key permissions** - Some models require specific access
+2. **Refresh models** - Switch providers and back to Claude to refresh
+3. **Update Meetily** - Newer versions support latest models
+4. **Use fallback models** - If API fetch fails, fallback models are shown
+
+### Slow Response Times
+
+**Issue:** Summary generation takes longer than expected
+
+**Cause:**
+- Very long meetings (>2 hours)
+- High API load during peak times
+- Using Opus model (slower but highest quality)
+
+**Solution:**
+1. **Switch to Haiku or Sonnet** for faster results
+2. **Split long meetings** - Record in segments if possible
+3. **Off-peak processing** - Generate summaries during low-traffic hours
+
+### Connection Errors
+
+**Error:** "Failed to connect to Anthropic API"
+
+**Solution:**
+1. **Check internet connection**
+2. **Verify firewall settings** - Allow HTTPS access to `api.anthropic.com`
+3. **Check Anthropic status** - Visit [status.anthropic.com](https://status.anthropic.com)
+4. **Retry** - Temporary network issues may resolve
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Rotate Keys Regularly" icon="key">
+    Generate new API keys every 90 days and revoke old ones in the Anthropic Console.
+  </Card>
+  
+  <Card title="Use Least Privilege" icon="shield">
+    Create separate API keys for different applications with minimal required permissions.
+  </Card>
+  
+  <Card title="Monitor Usage" icon="chart-line">
+    Regularly check your Anthropic Console for unusual activity or usage patterns.
+  </Card>
+  
+  <Card title="Secure Storage" icon="lock">
+    Never share your API key or commit it to version control. Meetily stores it locally only.
+  </Card>
+</CardGroup>
+
+## Advanced Features
+
+### Context Window Advantages
+
+With 200K tokens, Claude can:
+- Process very long meetings without chunking
+- Maintain context across the entire conversation
+- Generate more coherent summaries
+- Better understand references to earlier discussion points
+
+### Custom Instructions
+
+While Meetily uses optimized prompts for summaries, Claude's intelligence allows it to:
+- Recognize meeting types (standup, planning, retrospective)
+- Adapt tone and detail level automatically
+- Identify domain-specific terminology
+- Preserve important nuances in technical discussions
+
+## Comparing with Other Providers
+
+| Feature | Claude | OpenAI | Ollama | Groq |
+|---------|--------|--------|--------|------|
+| **Context Window** | 200K | 128K | 4-32K | 32K |
+| **Privacy** | Cloud | Cloud | Local | Cloud |
+| **Cost** | $$ | $$ | Free | $ |
+| **Speed** | Fast | Fast | Medium | Fastest |
+| **Quality** | Excellent | Excellent | Good | Very Good |
+| **Best For** | Nuanced analysis | General purpose | Privacy | Speed |
+
+## Related Resources
+
+- [Anthropic Console](https://console.anthropic.com)
+- [Claude API Documentation](https://docs.anthropic.com)
+- [Anthropic Pricing](https://www.anthropic.com/pricing)
+- [Meetily Summary Settings](/quickstart/ai-setup)
+- [OpenAI Provider](/ai-providers/openai) - Alternative cloud provider
+- [Ollama Provider](/ai-providers/ollama) - Local alternative

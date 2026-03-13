@@ -1,0 +1,183 @@
+---
+title: Recording
+description: Capture high-quality audio from your meetings with professional-grade recording capabilities
+---
+
+Meetily provides powerful audio recording capabilities that capture both your microphone and system audio simultaneously. All recordings are processed locally on your device, ensuring complete privacy.
+
+## Starting a Recording
+
+There are multiple ways to start recording in Meetily:
+
+<Steps>
+  <Step title="Click the Record Button">
+    Click the red microphone button in the center of the home screen to begin recording.
+  </Step>
+  
+  <Step title="Or use the Sidebar">
+    Click the record icon in the sidebar to quickly start a new recording from anywhere in the app.
+  </Step>
+  
+  <Step title="Grant Permissions">
+    On first use, you'll need to grant microphone and screen recording permissions (for system audio capture).
+  </Step>
+</Steps>
+
+<Info>
+  **Permission Requirements**
+  - **Microphone**: Required for capturing your voice and meeting participants
+  - **Screen Recording** (macOS): Required for capturing system audio (like meeting software)
+</Info>
+
+## Recording Controls
+
+Once recording starts, you'll see the recording control bar at the bottom center of the screen:
+
+<CardGroup cols={3}>
+  <Card title="Pause/Resume" icon="pause">
+    Pause recording temporarily and resume when ready. Paused segments are indicated with an orange color.
+  </Card>
+  
+  <Card title="Stop Recording" icon="square">
+    Stop the recording and begin processing transcripts. The app will save your audio and generate transcripts automatically.
+  </Card>
+  
+  <Card title="Audio Levels" icon="signal">
+    Visual bars show real-time audio input levels, confirming that audio is being captured.
+  </Card>
+</CardGroup>
+
+## Audio Sources
+
+Meetily captures audio from two sources simultaneously:
+
+### Microphone Audio
+Captures your voice and any sounds picked up by your selected microphone device.
+
+### System Audio
+Captures audio from your computer's applications, perfect for recording:
+- Video conferencing calls (Zoom, Teams, Google Meet)
+- Webinars and presentations
+- Screen recordings with audio
+- Any audio playing through your computer
+
+<Warning>
+  **System Audio Setup Required**
+  
+  To capture system audio, you need a virtual audio device:
+  - **macOS**: Install [BlackHole](https://existential.audio/blackhole/) (free)
+  - **Windows**: Built-in WASAPI loopback support
+  - **Linux**: Configure PulseAudio or ALSA loopback
+</Warning>
+
+## Professional Audio Mixing
+
+Meetily uses advanced audio processing to ensure high-quality recordings:
+
+<AccordionGroup>
+  <Accordion title="RMS-Based Ducking">
+    Automatically reduces system audio volume when you speak, ensuring your voice is always clear and prominent in the recording.
+  </Accordion>
+  
+  <Accordion title="Clipping Prevention">
+    Intelligent volume management prevents audio distortion even when both microphone and system audio are loud.
+  </Accordion>
+  
+  <Accordion title="48kHz Sample Rate">
+    Professional-quality audio recording with consistent sample rates across all audio sources.
+  </Accordion>
+</AccordionGroup>
+
+## Recording Status Indicators
+
+Stay informed about your recording status with visual feedback:
+
+| Indicator | Meaning |
+|-----------|--------|
+| Red pulsing bars | Recording in progress |
+| Orange bars | Recording paused |
+| Blue loading spinner | Processing stopped recording |
+| "Listening for speech..." | Waiting for voice activity |
+| "Speech detected" | Voice activity detected |
+
+## Voice Activity Detection (VAD)
+
+Meetily uses Voice Activity Detection to optimize transcription:
+
+- Only processes audio segments containing speech
+- Reduces transcription workload by ~70%
+- Improves transcription speed and accuracy
+- Automatically filters out silence and background noise
+
+<Tip>
+  **First Recording Tip**
+  
+  The first recording after launching Meetily may take a few extra seconds to start as the transcription model loads into memory. Subsequent recordings will start instantly.
+</Tip>
+
+## Recording Best Practices
+
+<Steps>
+  <Step title="Test Your Audio">
+    Before important meetings, do a quick test recording to verify both microphone and system audio are working correctly.
+  </Step>
+  
+  <Step title="Check Audio Levels">
+    Watch the audio level bars when you speak - they should show activity without maxing out.
+  </Step>
+  
+  <Step title="Minimize Background Noise">
+    Record in a quiet environment for best transcription accuracy.
+  </Step>
+  
+  <Step title="Name Your Meetings">
+    Give your recording a descriptive name so it's easy to find later in your meeting library.
+  </Step>
+</Steps>
+
+## Recording Storage
+
+All recordings are stored locally on your device:
+
+- **Development**: `frontend/recordings/` directory
+- **Production (macOS)**: `~/Library/Application Support/Meetily/recordings/`
+- **Production (Windows)**: `%APPDATA%\Meetily\recordings\`
+- **Format**: High-quality WAV files
+
+<Info>
+  Recordings are automatically cleaned up after 7 days to save disk space. Make sure to export any important recordings before then.
+</Info>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="No audio being captured">
+    - Verify microphone permissions are granted
+    - Check that the correct input device is selected in Settings
+    - Ensure no other app is using the microphone exclusively
+  </Accordion>
+  
+  <Accordion title="System audio not recording">
+    - Install BlackHole or appropriate virtual audio device
+    - Configure system audio routing to include virtual device
+    - Grant screen recording permissions (macOS)
+  </Accordion>
+  
+  <Accordion title="Recording fails to start">
+    - Check that a transcription model is loaded in Settings
+    - Verify you have sufficient disk space
+    - Try restarting the application
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Transcription" icon="closed-captioning" href="/features/transcription">
+    Learn how recordings are transcribed in real-time
+  </Card>
+  
+  <Card title="Meeting Management" icon="folder" href="/features/meeting-management">
+    Organize and manage your recorded meetings
+  </Card>
+</CardGroup>

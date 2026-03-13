@@ -1,0 +1,364 @@
+---
+title: AI Summaries
+description: Transform meeting transcripts into structured, actionable summaries using local or cloud AI models
+---
+
+Meetily's AI Summary feature converts raw meeting transcripts into organized, structured summaries with key takeaways, decisions, action items, and more.
+
+## Overview
+
+After recording a meeting, you can generate an AI-enhanced summary that automatically:
+
+<CardGroup cols={2}>
+  <Card title="Extracts Key Points" icon="list">
+    Identifies the most important topics and discussions from your meeting.
+  </Card>
+  
+  <Card title="Captures Decisions" icon="check-circle">
+    Highlights decisions made and consensus reached during the meeting.
+  </Card>
+  
+  <Card title="Lists Action Items" icon="tasks">
+    Extracts actionable tasks and assignments with context.
+  </Card>
+  
+  <Card title="Structures Content" icon="sitemap">
+    Organizes information into logical sections for easy navigation.
+  </Card>
+</CardGroup>
+
+## Generating a Summary
+
+There are two ways to generate summaries:
+
+### From Meeting Details Page
+
+<Steps>
+  <Step title="Open a Meeting">
+    Click on any meeting in the sidebar to open its detail view.
+  </Step>
+  
+  <Step title="Click Generate Summary">
+    In the right panel, click the **Generate AI Summary** button.
+  </Step>
+  
+  <Step title="Wait for Processing">
+    The AI will analyze your transcript (typically takes 30 seconds to 2 minutes depending on length and model).
+  </Step>
+  
+  <Step title="Review & Edit">
+    The summary appears in a structured, editable format. Make any adjustments needed.
+  </Step>
+</Steps>
+
+### Auto-Generate After Recording
+
+Meetily can automatically generate summaries when you stop recording:
+
+1. Enable **Auto-generate summaries** in Settings
+2. Stop your recording as normal
+3. The summary will generate automatically in the background
+4. Navigate to the meeting details page to view the result
+
+## AI Model Options
+
+Meetily supports multiple AI providers for summary generation:
+
+<Tabs>
+  <Tab title="Local (Ollama)">
+    **Privacy-First Option**
+    
+    Run AI models locally using [Ollama](https://ollama.ai):
+    
+    - **Complete privacy**: No data leaves your device
+    - **No API costs**: Unlimited summaries
+    - **Offline capable**: Works without internet
+    - **Recommended models**: Llama 3, Mistral, Phi-3
+    
+    <Info>
+      Requires Ollama to be installed and running locally. See [Setup Guide](/ai-providers/ollama).
+    </Info>
+  </Tab>
+  
+  <Tab title="Claude (Anthropic)">
+    **Best Quality**
+    
+    Use Claude models via Anthropic API:
+    
+    - **Highest accuracy**: Industry-leading comprehension
+    - **Best for complex meetings**: Handles technical discussions well
+    - **Models**: Claude 3.5 Sonnet, Claude 3 Opus
+    - **Cost**: Pay-per-use via Anthropic API
+    
+    Requires an Anthropic API key.
+  </Tab>
+  
+  <Tab title="Groq">
+    **Fastest Option**
+    
+    Ultra-fast inference via Groq:
+    
+    - **Blazing fast**: Summaries in seconds
+    - **Low cost**: Competitive API pricing  
+    - **Good quality**: Llama and Mixtral models
+    - **Free tier available**
+    
+    Requires a Groq API key (free tier available).
+  </Tab>
+  
+  <Tab title="OpenRouter">
+    **Most Flexibility**
+    
+    Access dozens of models via OpenRouter:
+    
+    - **Model variety**: GPT-4, Claude, Gemini, and more
+    - **Compare outputs**: Try different models on same transcript
+    - **Unified API**: One key for multiple providers
+    - **Competitive pricing**
+    
+    Requires an OpenRouter API key.
+  </Tab>
+</Tabs>
+
+## Summary Structure
+
+Generated summaries include several key sections:
+
+### Standard Sections
+
+<AccordionGroup>
+  <Accordion title="Agenda">
+    Main topics discussed during the meeting, extracted from the conversation flow.
+  </Accordion>
+  
+  <Accordion title="Key Points">
+    Important information, insights, or facts shared during the meeting.
+  </Accordion>
+  
+  <Accordion title="Decisions Made">
+    Explicit decisions, conclusions, or consensus reached by participants.
+  </Accordion>
+  
+  <Accordion title="Action Items">
+    Tasks, follow-ups, and assignments that came out of the meeting, including who is responsible when mentioned.
+  </Accordion>
+  
+  <Accordion title="Closing Remarks">
+    Final thoughts, next steps, or scheduling information mentioned at the end.
+  </Accordion>
+</AccordionGroup>
+
+### Custom Templates
+
+You can create custom summary templates for specific meeting types:
+
+- **Standup meetings**: Include blockers, progress updates, today's goals
+- **Client calls**: Focus on requirements, feedback, deliverables
+- **Brainstorming sessions**: Emphasize ideas, creative solutions, next explorations
+- **Interviews**: Structure around questions, candidate responses, evaluation criteria
+
+<Tip>
+  Create and save custom prompt templates in Settings → AI Templates for consistent summary formatting across similar meeting types.
+</Tip>
+
+## Editing Summaries
+
+Summaries are fully editable using a rich text editor:
+
+<CardGroup cols={2}>
+  <Card title="Add/Remove Sections" icon="plus-minus">
+    Click the **+** button to add new custom sections. Delete sections you don't need.
+  </Card>
+  
+  <Card title="Edit Content" icon="edit">
+    Click any text block to edit. Supports text, headings, and bullet points.
+  </Card>
+  
+  <Card title="Reorder Content" icon="arrows-up-down">
+    Drag blocks and sections to reorganize the summary structure.
+  </Card>
+  
+  <Card title="Undo/Redo" icon="rotate-left">
+    Full undo/redo history available via keyboard shortcuts (Cmd/Ctrl+Z).
+  </Card>
+</CardGroup>
+
+## Summary Actions
+
+### Copy Summary
+Click the **Copy** button to copy the entire summary as formatted markdown to your clipboard.
+
+### Export Summary
+Export summaries as:
+- **Markdown (.md)**: For documentation, wikis, or note apps
+- **Plain text (.txt)**: For simple text editors
+- **PDF**: For sharing or archiving (coming soon)
+
+### Regenerate Summary
+Not happy with the result? Click **Regenerate** to generate a fresh summary with:
+- Different model selection
+- Modified prompt/template
+- Alternative summarization approach
+
+<Warning>
+  Regenerating replaces the current summary. Copy or export it first if you want to keep the original.
+</Warning>
+
+## Custom Prompts
+
+For more control over summary generation, use custom prompts:
+
+1. Click **Custom Prompt** when generating
+2. Add specific instructions like:
+   - "Focus on technical implementation details"
+   - "Highlight budget and resource discussions"
+   - "Extract all customer feedback mentioned"
+3. The AI will prioritize your instructions when generating the summary
+
+<CodeGroup>
+```text Example: Technical Meeting
+Create a technical summary focusing on:
+- Architecture decisions and rationale
+- Technical challenges discussed
+- Implementation approach agreed upon
+- Performance considerations
+```
+
+```text Example: Sales Call
+Summarize this sales call with emphasis on:
+- Customer pain points and needs
+- Solution fit and benefits discussed
+- Pricing and timeline mentioned
+- Next steps and follow-up actions
+```
+</CodeGroup>
+
+## Collaborative Editing
+
+Work with your team on meeting summaries:
+
+1. **Generate baseline**: AI creates the initial summary structure
+2. **Team review**: Share the meeting page link with team members
+3. **Collaborative edits**: Multiple people can refine and expand sections
+4. **Final version**: Save the polished summary to your meeting library
+
+<Info>
+  Summary changes are auto-saved as you edit. No need to manually save changes.
+</Info>
+
+## Summary Quality Tips
+
+<Steps>
+  <Step title="High-Quality Transcripts">
+    Better transcripts produce better summaries. Use appropriate Whisper models (small or larger) for accurate transcription.
+  </Step>
+  
+  <Step title="Choose the Right Model">
+    - **Quick meetings**: Use Groq or local models for speed
+    - **Important meetings**: Use Claude for maximum accuracy
+    - **Complex topics**: Use larger models (Claude Opus, GPT-4)
+  </Step>
+  
+  <Step title="Use Templates">
+    Consistent prompt templates improve summary quality and formatting for recurring meeting types.
+  </Step>
+  
+  <Step title="Review and Refine">
+    Always review AI-generated summaries. Add context, correct errors, and enhance clarity as needed.
+  </Step>
+</Steps>
+
+## Summary Search
+
+Find specific information across all your meeting summaries:
+
+1. Use the **sidebar search** to enter keywords
+2. Results show matching meetings with context snippets
+3. Click a result to jump directly to that meeting's summary
+
+<Tip>
+  Search works on both transcripts and summaries, making it easy to find discussions even months later.
+</Tip>
+
+## Performance Considerations
+
+### Generation Time
+
+Summary generation speed varies by provider:
+
+| Provider | Typical Time (10min meeting) |
+|----------|------------------------------|
+| Groq | 10-20 seconds |
+| OpenRouter (fast models) | 20-40 seconds |
+| Claude | 30-60 seconds |
+| Local (Ollama) | 1-3 minutes (CPU), 30-60s (GPU) |
+
+### Processing Status
+
+While generating, you'll see real-time status updates:
+- "Processing transcript..."
+- "Generating summary..."
+- Progress indicators for long operations
+
+<Info>
+  You can navigate away during summary generation. The process continues in the background, and you'll be notified when complete.
+</Info>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Summary generation failed">
+    - **Check API key**: Verify your API key is valid and has credits
+    - **Check model config**: Ensure model is correctly selected in Settings
+    - **Verify connectivity**: For cloud providers, ensure internet connection
+    - **Try different model**: Some models work better for specific content
+  </Accordion>
+  
+  <Accordion title="Poor summary quality">
+    - **Use larger model**: Switch from base to advanced models
+    - **Add custom prompt**: Provide specific instructions for what you need
+    - **Check transcript quality**: Low-quality transcripts produce poor summaries
+    - **Regenerate**: Try generating again, results can vary
+  </Accordion>
+  
+  <Accordion title="Summary is incomplete">
+    - **Long meetings**: Very long meetings may be truncated (context limits)
+    - **Model timeout**: Try a faster model or local processing
+    - **Regenerate with focus**: Use custom prompt to focus on specific sections
+  </Accordion>
+  
+  <Accordion title="Local model not working (Ollama)">
+    - Verify Ollama is installed and running
+    - Check that the model is pulled: `ollama pull llama3`
+    - Confirm endpoint in Settings: `http://localhost:11434`
+    - Check Ollama logs for errors
+  </Accordion>
+</AccordionGroup>
+
+## Privacy & Security
+
+<CardGroup cols={2}>
+  <Card title="Local Processing" icon="shield">
+    When using Ollama, all AI processing happens on your device. Transcripts never leave your computer.
+  </Card>
+  
+  <Card title="Cloud Processing" icon="cloud">
+    When using cloud providers (Claude, Groq, OpenRouter), transcripts are sent via encrypted HTTPS. Providers may retain data per their policies.
+  </Card>
+</CardGroup>
+
+<Warning>
+  For sensitive meetings (legal, medical, confidential business), use local Ollama models to ensure complete privacy.
+</Warning>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Transcription" icon="closed-captioning" href="/features/transcription">
+    High-quality transcripts are the foundation for great summaries
+  </Card>
+  
+  <Card title="Meeting Management" icon="folder" href="/features/meeting-management">
+    Organize and search your meeting library
+  </Card>
+</CardGroup>

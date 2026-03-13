@@ -1,0 +1,583 @@
+---
+title: System Audio Capture
+description: Platform-specific system audio capture using ScreenCaptureKit (macOS), WASAPI (Windows), and PulseAudio (Linux)
+---
+
+## Overview
+
+System audio capture allows Meetily to record audio playing through your speakers or headphones (for example, the other participants in a video call). Each operating system uses different APIs optimized for low-latency, high-quality capture.
+
+## Platform Implementations
+
+### macOS: ScreenCaptureKit + Core Audio
+
+**API:** [ScreenCaptureKit](https://developer.apple.com/documentation/screencapturekit) with Core Audio tap (macOS 13+)
+
+**How it works:**
+
+Meetily uses Apple's ScreenCaptureKit framework to create a **process tap** that captures the digital audio stream sent to your output device:
+
+```rust
+// Create global mono tap (captures all system audio)
+let tap_desc = ca::TapDesc::with_mono_global_tap_excluding_processes(&ns::Array::new());
+let tap = tap_desc.create_process_tap()?;
+
+// Get tap audio format
+let tap_asbd = tap.asbd();
+let sample_rate = tap_asbd.sample_rate();  // Usually 48kHz or 44.1kHz
+```
+
+**Key characteristics:**
+
+- **Global tap**: Captures all system audio (not per-application)
+- **Mono output**: Single channel (converted from stereo automatically)
+- **Digital capture**: Captures before Bluetooth/AirPlay encoding (pristine quality)
+- **Zero latency**: Direct tap from Core Audio pipeline
+- **Requires permission**: Screen Recording permission (macOS 14.4+)
+
+**Why ScreenCaptureKit instead of legacy APIs?**
+
+| API | Status | Issues |
+|-----|--------|--------|
+| **ScreenCaptureKit** | ✅ Current | Requires permission, macOS 13+ only |
+| Audio Hijack / Soundflower | ⚠️ Third-party | Requires separate installation |
+| BlackHole | ⚠️ Virtual device | User must configure, requires Multi-Output Device |
+| Legacy Core Audio tap | ❌ Deprecated | Removed in macOS 13 |
+
+<Note>
+ScreenCaptureKit captures the audio stream **before** it's encoded for Bluetooth or AirPlay. This means perfect digital quality even when using AirPods or HomePod.
+</Note>
+
+#### Permission Requirements
+
+Meetily requires **Screen Recording permission** to use ScreenCaptureKit:
+
+**How to grant:**
+1. macOS automatically prompts when first starting recording
+2. Or manually: System Settings → Privacy & Security → Screen Recording
+3. Enable checkbox for "Meetily"
+4. Restart Meetily after granting permission
+
+**What happens if denied:**
+- Core Audio tap is created successfully (no error)
+- Audio stream returns all zeros (silence)
+- Recording continues with microphone only
+
+**Checking permission status:**
+
+```typescript
+const hasPermission = await invoke<boolean>('check_system_audio_permissions');
+if (!hasPermission) {
+  console.log('Screen Recording permission required for system audio');
+}
+```
+
+#### Bluetooth Speaker Handling
+
+When your default output is a Bluetooth device (e.g., AirPods):
+
+**What Meetily does:**
+- Keeps the Bluetooth device as the system audio source (does NOT override)
+- ScreenCaptureKit captures from the active output stream
+- Captures digital audio **before** Bluetooth encoding
+
+**Why this works:**
+
+Core Audio architecture on macOS:
+```
+App Audio Output
+       ↓
+   Core Audio Mix
+       ↓
+   ↓         ↓
+Tap Point   Bluetooth Encoder
+(Digital)        ↓
+             AirPods (Wireless)
+```
+
+ScreenCaptureKit taps at the **digital point**, so even though audio is playing through Bluetooth, the capture is pristine PCM audio.
+
+<Warning>
+If Meetily overrode Bluetooth speakers to built-in speakers, ScreenCaptureKit would capture from built-in (where no audio is playing) and record silence.
+</Warning>
+
+#### Sample Rate Handling
+
+Core Audio taps can report various sample rates:
+
+**Common rates:**
+- 48kHz (most common, preferred)
+- 44.1kHz (music-focused devices)
+- 96kHz (high-end audio interfaces)
+
+**Meetily's handling:**
+
+```rust
+pub struct CoreAudioStream {
+    sample_rate: Arc<AtomicU32>,  // Dynamic tracking
+    // ...
+}
+
+impl CoreAudioStream {
+    pub fn sample_rate(&self) -> u32 {
+        self.current_sample_rate.load(Ordering::Relaxed)
+    }
+}
+```
+
+All captured audio is resampled to **48kHz** before mixing with microphone audio.
+
+#### Troubleshooting macOS System Audio
+
+**No system audio captured (silence):**
+
+1. **Check Screen Recording permission**: Most common cause
+   ```bash
+   # Check current permissions
+   sqlite3 ~/Library/Application\ Support/com.apple.TCC/TCC.db \
+     "SELECT * FROM access WHERE service='kTCCServiceScreenCapture'"
+   ```
+
+2. **Verify audio is playing**: Open Music.app or YouTube and confirm sound
+
+3. **Check default output device**: 
+   ```bash
+   # Get current default output
+   system_profiler SPAudioDataType | grep "Default Output Device"
+   ```
+
+4. **Restart Core Audio** (if glitchy):
+   ```bash
+   sudo killall coreaudiod
+   ```
+
+5. **Check Console.app**: Filter for "CoreAudio" or "ScreenCaptureKit" to see detailed errors
+
+**Audio cutting out / stuttering:**
+
+- **Cause**: CPU overload, buffer underrun
+- **Solution**: Close resource-heavy apps, reduce screen resolution during capture
+
+**Sample rate mismatch errors:**
+
+- **Cause**: Device switching mid-recording (e.g., AirPods connected)
+- **Solution**: Keep same output device throughout recording, or restart recording after switch
+
+### Windows: WASAPI Loopback
+
+**API:** [WASAPI](https://docs.microsoft.com/en-us/windows/win32/coreaudio/wasapi) (Windows Audio Session API) in loopback mode
+
+**How it works:**
+
+WASAPI provides a **loopback endpoint** that mirrors the audio stream sent to a playback device:
+
+```rust
+pub fn get_windows_device(audio_device: &AudioDevice) 
+    -> Result<(cpal::Device, cpal::SupportedStreamConfig)> 
+{
+    let wasapi_host = cpal::host_from_id(cpal::HostId::Wasapi)?;
+    
+    // For output devices, use them as input (loopback capture)
+    match audio_device.device_type {
+        DeviceType::Output => {
+            for device in wasapi_host.output_devices()? {
+                if device.name() == audio_device.name {
+                    // Get output config, but we'll capture it as input (loopback)
+                    let config = device.default_output_config()?;
+                    return Ok((device, config));
+                }
+            }
+        }
+    }
+}
+```
+
+**Key characteristics:**
+
+- **No virtual device required**: Loopback is built into WASAPI
+- **Per-device capture**: Can capture specific application if using exclusive mode
+- **Digital capture**: Pre-DAC, perfect quality
+- **No additional permissions**: Works immediately (no UAC prompts)
+
+**Shared vs. Exclusive Mode:**
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Shared** (default) | Multiple apps can use device | Normal recording (recommended) |
+| **Exclusive** | Single app has exclusive access | Professional audio (may conflict) |
+
+Meetily uses **shared mode** to avoid conflicts with other applications.
+
+#### Device Enumeration on Windows
+
+WASAPI device enumeration is more complex than other platforms:
+
+```rust
+pub fn configure_windows_audio(host: &cpal::Host) -> Result<Vec<AudioDevice>> {
+    let mut devices = Vec::new();
+    
+    // Try WASAPI first (preferred)
+    if let Ok(wasapi_host) = cpal::host_from_id(cpal::HostId::Wasapi) {
+        // Output devices (for loopback)
+        for device in wasapi_host.output_devices()? {
+            devices.push(AudioDevice::new(name, DeviceType::Output));
+        }
+        
+        // Input devices (microphones)
+        for device in wasapi_host.input_devices()? {
+            devices.push(AudioDevice::new(name, DeviceType::Input));
+        }
+    } else {
+        // Fallback to default host if WASAPI fails
+        warn!("WASAPI unavailable, using default host");
+    }
+}
+```
+
+**Fallback chain:**
+1. Try WASAPI host (preferred)
+2. If WASAPI fails, use default cpal host
+3. If still no devices, add only default input/output devices
+
+#### Sample Format Handling
+
+WASAPI devices support various sample formats:
+
+**Preferred formats** (in order):
+1. **F32** (32-bit float) - Meetily's native format
+2. **I16** (16-bit integer) - CD quality
+3. **U16** (16-bit unsigned) - Fallback
+
+**Configuration selection:**
+
+```rust
+// First, try F32 stereo (best quality)
+for config in supported_configs {
+    if config.sample_format() == cpal::SampleFormat::F32 
+       && config.channels() == 2 {
+        return Ok((device, config.with_max_sample_rate()));
+    }
+}
+
+// Then try any F32 format
+for config in supported_configs {
+    if config.sample_format() == cpal::SampleFormat::F32 {
+        return Ok((device, config.with_max_sample_rate()));
+    }
+}
+
+// Finally, fall back to any supported format
+let config = supported_configs.next()
+    .ok_or(anyhow!("No supported configurations"))?;
+```
+
+#### Troubleshooting Windows System Audio
+
+**WASAPI host creation fails:**
+
+1. **Check Windows Audio service**:
+   ```powershell
+   # Restart Windows Audio service
+   Restart-Service -Name "Audiosrv"
+   ```
+
+2. **Verify WASAPI availability**:
+   ```powershell
+   # Check if WASAPI is registered
+   Get-Service | Where-Object {$_.Name -like "*Audio*"}
+   ```
+
+3. **Update audio drivers**: Visit manufacturer's website (Realtek, etc.)
+
+**No loopback devices found:**
+
+- **Cause**: Some USB audio interfaces don't support loopback
+- **Solution**: Use VB-Cable virtual device, or select "Stereo Mix" if available
+
+**"Device is already in use" error:**
+
+- **Cause**: Another application has exclusive mode lock
+- **Solution**: Close applications using audio exclusively (DAWs, games with exclusive mode)
+
+**Poor audio quality / distortion:**
+
+- **Check Windows audio enhancements**: Disable all enhancements in Sound Control Panel
+- **Verify sample rate**: Should match Meetily's 48kHz (or 44.1kHz with resampling)
+- **Check CPU usage**: High CPU can cause buffer underruns
+
+### Linux: PulseAudio Monitor Sources
+
+**API:** [PulseAudio](https://www.freedesktop.org/wiki/Software/PulseAudio/) monitor sources (virtual input devices)
+
+**How it works:**
+
+PulseAudio automatically creates a **monitor source** for each output sink:
+
+```rust
+pub fn configure_linux_audio(host: &cpal::Host) -> Result<Vec<AudioDevice>> {
+    let mut devices = Vec::new();
+    
+    // Add regular input devices
+    for device in host.input_devices()? {
+        devices.push(AudioDevice::new(name, DeviceType::Input));
+    }
+    
+    // Add PulseAudio monitor sources for system audio
+    if let Ok(pulse_host) = cpal::host_from_id(cpal::HostId::Alsa) {
+        for device in pulse_host.input_devices()? {
+            if let Ok(name) = device.name() {
+                // Monitor sources have "monitor" in the name
+                if name.contains("monitor") {
+                    devices.push(AudioDevice::new(
+                        format!("{} (System Audio)", name),
+                        DeviceType::Output  // Treated as system audio
+                    ));
+                }
+            }
+        }
+    }
+}
+```
+
+**Key characteristics:**
+
+- **Automatic**: No manual configuration required
+- **Per-sink monitoring**: Can capture specific output sink
+- **Zero latency**: Direct tap from PulseAudio mixer
+- **No permissions**: Works out of the box
+
+#### PulseAudio vs. ALSA
+
+| Component | Role | Meetily Usage |
+|-----------|------|---------------|
+| **PulseAudio** | Sound server (high-level) | Monitor sources for system audio |
+| **ALSA** | Kernel driver (low-level) | Microphone capture |
+| **JACK** | Pro audio (optional) | Not directly supported |
+
+Meetily uses **ALSA** for microphone input and **PulseAudio monitors** for system audio.
+
+#### Manual Monitor Source Configuration
+
+If automatic detection fails, manually create a monitor source:
+
+```bash
+# List all PulseAudio sinks
+pactl list sinks short
+
+# Example output:
+# 0    alsa_output.pci-0000_00_1f.3.analog-stereo    ...
+
+# The monitor source is automatically named:
+# alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
+
+# Test capture from monitor source
+parec --device=alsa_output.pci-0000_00_1f.3.analog-stereo.monitor | aplay
+```
+
+**Creating a loopback** (if monitors don't work):
+
+```bash
+# Load loopback module
+pactl load-module module-loopback source=alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
+
+# Make it persistent
+echo "load-module module-loopback source=alsa_output.pci-0000_00_1f.3.analog-stereo.monitor" \
+  >> ~/.config/pulse/default.pa
+```
+
+#### Troubleshooting Linux System Audio
+
+**No monitor sources detected:**
+
+1. **Check PulseAudio is running**:
+   ```bash
+   pulseaudio --check && echo "Running" || echo "Not running"
+   ```
+
+2. **Restart PulseAudio**:
+   ```bash
+   pulseaudio --kill
+   pulseaudio --start
+   ```
+
+3. **Verify sinks exist**:
+   ```bash
+   pactl list sinks short
+   # Should show at least one sink
+   ```
+
+4. **Check monitor sources manually**:
+   ```bash
+   pactl list sources | grep -i monitor
+   ```
+
+**Permission denied errors:**
+
+```bash
+# Add user to audio group
+sudo usermod -aG audio $USER
+
+# Logout and login for changes to take effect
+```
+
+**Sample rate mismatch:**
+
+```bash
+# Check PulseAudio default sample rate
+grep "default-sample-rate" /etc/pulse/daemon.conf
+
+# Set to 48kHz (Meetily's preferred rate)
+sudo sed -i 's/; default-sample-rate = .*/default-sample-rate = 48000/' /etc/pulse/daemon.conf
+pulseaudio --kill && pulseaudio --start
+```
+
+**ALSA host creation fails:**
+
+- **Cause**: ALSA libraries not installed
+- **Solution**:
+  ```bash
+  # Debian/Ubuntu
+  sudo apt install libasound2-dev
+  
+  # Fedora/RHEL
+  sudo dnf install alsa-lib-devel
+  
+  # Arch
+  sudo pacman -S alsa-lib
+  ```
+
+## Virtual Audio Devices
+
+### When You Need Them
+
+**macOS:**
+- Not strictly required (ScreenCaptureKit works with any output)
+- Useful for routing specific application audio
+- Recommended: [BlackHole](https://existential.audio/blackhole/)
+
+**Windows:**
+- Not required (WASAPI loopback works with any output)
+- Useful for advanced routing
+- Options: VB-Cable, Voicemeeter
+
+**Linux:**
+- Not required (PulseAudio monitors are automatic)
+- Useful for complex routing
+- Built-in: `module-null-sink` and `module-loopback`
+
+### Setting Up BlackHole (macOS)
+
+**Installation:**
+
+```bash
+# Using Homebrew
+brew install blackhole-2ch
+
+# Or download from https://existential.audio/blackhole/
+```
+
+**Configuration:**
+
+1. Open **Audio MIDI Setup** (in Applications/Utilities)
+2. Click **+** → Create Multi-Output Device
+3. Check both:
+   - Your speakers/headphones (for playback)
+   - BlackHole 2ch (for capture)
+4. Set Multi-Output Device as system default
+5. In Meetily, select "BlackHole 2ch" as system audio device
+
+<Note>
+With ScreenCaptureKit (macOS 13+), BlackHole is optional. You can capture directly from your default output device.
+</Note>
+
+### Setting Up VB-Cable (Windows)
+
+**Installation:**
+
+1. Download from [VB-Audio](https://vb-audio.com/Cable/)
+2. Run `VBCABLE_Setup_x64.exe` as Administrator
+3. Restart if prompted
+
+**Configuration:**
+
+1. Right-click speaker icon → Sounds → Playback
+2. Set "CABLE Input" as default device (audio plays through virtual cable)
+3. Open your communication app (Zoom, Teams) → Set output to "CABLE Input"
+4. In Meetily, select "CABLE Output" as system audio device
+
+<Warning>
+You won't hear audio when routing through VB-Cable. Use "Listen to this device" in CABLE Output properties to hear audio, or use WASAPI loopback directly without VB-Cable.
+</Warning>
+
+### Setting Up PulseAudio Null Sink (Linux)
+
+**Create a null sink** (virtual output):
+
+```bash
+# Create null sink
+pactl load-module module-null-sink sink_name=meetily_capture sink_properties=device.description="Meetily_Capture"
+
+# Create loopback from null sink to real speakers (so you can hear audio)
+pactl load-module module-loopback source=meetily_capture.monitor sink=alsa_output.pci-0000_00_1f.3.analog-stereo
+
+# Make persistent
+echo "load-module module-null-sink sink_name=meetily_capture sink_properties=device.description=\"Meetily_Capture\"" >> ~/.config/pulse/default.pa
+echo "load-module module-loopback source=meetily_capture.monitor sink=alsa_output.pci-0000_00_1f.3.analog-stereo" >> ~/.config/pulse/default.pa
+```
+
+**Use in Meetily:**
+
+1. Refresh device list in Meetily
+2. Select "meetily_capture.monitor (System Audio)" as system audio device
+3. In your communication app, set output to "Meetily_Capture"
+
+## Cross-Platform Comparison
+
+| Feature | macOS (ScreenCaptureKit) | Windows (WASAPI) | Linux (PulseAudio) |
+|---------|-------------------------|------------------|--------------------|
+| **Latency** | Less than 5ms | Less than 10ms | Less than 5ms |
+| **Quality** | Pristine (pre-encoding) | Pristine (pre-DAC) | Pristine (mixer tap) |
+| **Permissions** | Screen Recording required | None | None |
+| **Virtual Device** | Optional (BlackHole) | Optional (VB-Cable) | Automatic (monitors) |
+| **Per-App Capture** | Via ScreenCaptureKit filters | Via WASAPI session | Via PulseAudio routing |
+| **Min OS Version** | macOS 13+ | Windows 7+ | Any (PulseAudio) |
+
+## Performance Considerations
+
+### CPU Usage
+
+**Typical CPU usage** (per platform, recording only):
+
+- **macOS ScreenCaptureKit**: 2-5% (single core)
+- **Windows WASAPI**: 3-7% (single core)
+- **Linux PulseAudio**: 2-4% (single core)
+
+Additional overhead from:
+- Resampling (if device not 48kHz): +1-3%
+- RNNoise suppression: +5-10%
+- VAD processing: +2-5%
+
+### Memory Usage
+
+**Ring buffer allocation**:
+- Window size: 600ms @ 48kHz = 28,800 samples = 115 KB (f32)
+- Max buffer: 400ms × window = 46 MB (worst case)
+- Typical usage: ~5-10 MB for audio buffers
+
+### Disk I/O
+
+**Recording throughput** (48kHz mono, mixed):
+- Raw PCM: ~192 KB/s (uncompressed)
+- MP3 (256 kbps): ~32 KB/s
+- FLAC (lossless): ~100-150 KB/s (variable)
+
+For a 1-hour meeting:
+- MP3: ~115 MB
+- FLAC: ~360-540 MB
+- WAV (uncompressed): ~690 MB
+
+## See Also
+
+- [Audio Devices Configuration](/configuration/audio-devices) - Device selection and permissions
+- [Audio Mixing Configuration](/configuration/audio-mixing) - Mixing and processing features
+- [Privacy Settings](/configuration/privacy) - Audio data privacy controls

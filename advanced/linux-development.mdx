@@ -1,0 +1,836 @@
+---
+title: "Linux Development"
+description: "Platform-specific development setup for Linux with CUDA, ROCm, and Vulkan GPU acceleration"
+---
+
+## Overview
+
+Linux development for Meetily offers the most flexibility with support for CUDA (NVIDIA), ROCm (AMD), Vulkan (cross-platform), and optimized CPU modes. The build system automatically detects your hardware and configures the appropriate acceleration backend.
+
+## Prerequisites
+
+### Base Development Tools
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash Install Dependencies
+    # Update package list
+    sudo apt update
+
+    # Install build essentials
+    sudo apt install build-essential cmake git curl
+
+    # Install additional tools
+    sudo apt install pkg-config libssl-dev
+    ```
+  </Tab>
+  
+  <Tab title="Fedora/RHEL">
+    ```bash Install Dependencies
+    # Install build tools
+    sudo dnf groupinstall "Development Tools"
+    sudo dnf install cmake git curl
+
+    # Additional dependencies
+    sudo dnf install openssl-devel pkg-config
+    ```
+  </Tab>
+  
+  <Tab title="Arch Linux">
+    ```bash Install Dependencies
+    # Install base development
+    sudo pacman -S base-devel cmake git curl
+
+    # Additional tools
+    sudo pacman -S openssl pkg-config
+    ```
+  </Tab>
+</Tabs>
+
+### Rust Toolchain
+
+```bash Install Rust
+# Install rustup
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Source the environment
+source $HOME/.cargo/env
+
+# Verify installation
+rustc --version
+cargo --version
+```
+
+### Node.js and pnpm
+
+```bash Install Node.js
+# Using NodeSource repository (Ubuntu/Debian)
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Or use nvm (recommended)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install --lts
+
+# Install pnpm
+npm install -g pnpm
+
+# Verify
+node --version
+pnpm --version
+```
+
+## GPU Acceleration Options
+
+Linux supports multiple GPU backends. The build system automatically detects the best option.
+
+### Auto-Detection Priority
+
+| Priority | Hardware | Detection Criteria | Feature Flag |
+|----------|----------|-------------------|-------------|
+| 1️⃣ | NVIDIA CUDA | `nvidia-smi` + CUDA toolkit | `--features cuda` |
+| 2️⃣ | AMD ROCm | `rocm-smi` + ROCm installation | `--features hipblas` |
+| 3️⃣ | Vulkan | `vulkaninfo` + Vulkan SDK | `--features vulkan` |
+| 4️⃣ | OpenBLAS | BLAS libraries installed | `--features openblas` |
+| 5️⃣ | CPU-only | Fallback | (no features) |
+
+### NVIDIA CUDA Setup
+
+<Warning>
+Requires NVIDIA GPU with compute capability 5.0 or higher.
+</Warning>
+
+<Steps>
+
+<Step title="Verify GPU Support">
+```bash Check GPU
+# Check NVIDIA GPU
+lspci | grep -i nvidia
+
+# Check compute capability
+nvidia-smi --query-gpu=name,compute_cap --format=csv
+```
+</Step>
+
+<Step title="Install NVIDIA Drivers">
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash Install Drivers
+    # Add graphics drivers PPA
+    sudo add-apt-repository ppa:graphics-drivers/ppa
+    sudo apt update
+
+    # Install latest driver (or specific version)
+    sudo apt install nvidia-driver-550
+
+    # Reboot
+    sudo reboot
+
+    # Verify
+    nvidia-smi
+    ```
+  </Tab>
+  
+  <Tab title="Fedora">
+    ```bash Install Drivers
+    # Enable RPM Fusion
+    sudo dnf install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+
+    # Install driver
+    sudo dnf install akmod-nvidia
+
+    # Reboot
+    sudo reboot
+
+    # Verify
+    nvidia-smi
+    ```
+  </Tab>
+  
+  <Tab title="Arch Linux">
+    ```bash Install Drivers
+    # Install NVIDIA driver
+    sudo pacman -S nvidia nvidia-utils
+
+    # Reboot
+    sudo reboot
+
+    # Verify
+    nvidia-smi
+    ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step title="Install CUDA Toolkit">
+```bash Install CUDA
+# Ubuntu/Debian (CUDA 12.x)
+sudo apt install nvidia-cuda-toolkit
+
+# Or download from NVIDIA
+# https://developer.nvidia.com/cuda-downloads
+
+# Verify installation
+nvcc --version
+echo $CUDA_PATH
+```
+</Step>
+
+<Step title="Build with CUDA">
+```bash CUDA Build
+# Set compute architecture (adjust for your GPU)
+# RTX 3080 = 8.6 → use "86"
+# GTX 1080 = 6.1 → use "61"
+
+export CMAKE_CUDA_ARCHITECTURES=75
+export CMAKE_CUDA_STANDARD=17
+export CMAKE_POSITION_INDEPENDENT_CODE=ON
+
+# Build with auto-detection
+cd frontend
+./build-gpu.sh
+
+# Or force CUDA
+TAURI_GPU_FEATURE=cuda ./build-gpu.sh
+```
+
+<Note>
+Find your compute capability: `nvidia-smi --query-gpu=compute_cap --format=csv`
+
+Convert format: `7.5` → `75`, `8.6` → `86`
+</Note>
+</Step>
+
+</Steps>
+
+### AMD ROCm Setup
+
+<Warning>
+Requires AMD GPU with ROCm support (RX 5000+, Radeon VII, or newer).
+</Warning>
+
+<Steps>
+
+<Step title="Check GPU Compatibility">
+```bash Verify AMD GPU
+# Check GPU
+lspci | grep -i amd
+
+# Check ROCm compatibility
+# Visit: https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html
+```
+</Step>
+
+<Step title="Install ROCm">
+<Tabs>
+  <Tab title="Ubuntu 22.04">
+    ```bash Install ROCm
+    # Add ROCm repository
+    wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/jammy/amdgpu-install_5.7.50700-1_all.deb
+    sudo dpkg -i amdgpu-install_5.7.50700-1_all.deb
+    sudo apt update
+
+    # Install ROCm
+    sudo amdgpu-install --usecase=rocm
+
+    # Add user to groups
+    sudo usermod -a -G render,video $USER
+
+    # Reboot
+    sudo reboot
+    ```
+  </Tab>
+  
+  <Tab title="Other Distributions">
+    ```bash ROCm Installation
+    # Follow AMD's official guide:
+    # https://rocm.docs.amd.com/en/latest/deploy/linux/index.html
+
+    # Different package names by distro
+    ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step title="Verify ROCm Installation">
+```bash Check ROCm
+# Verify ROCm
+rocm-smi
+
+# Check HIP
+hipcc --version
+
+# Check ROCm path
+echo $ROCM_PATH
+
+# If not set:
+export ROCM_PATH=/opt/rocm
+```
+</Step>
+
+<Step title="Build with ROCm">
+```bash ROCm Build
+# Set environment
+export ROCM_PATH=/opt/rocm
+
+# Build with auto-detection
+cd frontend
+./build-gpu.sh
+
+# Or force ROCm
+TAURI_GPU_FEATURE=hipblas ./build-gpu.sh
+```
+</Step>
+
+</Steps>
+
+### Vulkan Setup (Cross-Platform)
+
+Vulkan works with NVIDIA, AMD, and Intel GPUs. Good fallback if CUDA/ROCm don't work.
+
+<Steps>
+
+<Step title="Install Vulkan SDK">
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash Install Vulkan
+    # Install Vulkan SDK and BLAS
+    sudo apt install vulkan-sdk libopenblas-dev
+
+    # Or install from LunarG
+    # https://vulkan.lunarg.com/sdk/home#linux
+
+    # Verify
+    vulkaninfo --summary
+    ```
+  </Tab>
+  
+  <Tab title="Fedora">
+    ```bash Install Vulkan
+    # Install development packages
+    sudo dnf install vulkan-devel openblas-devel
+
+    # Verify
+    vulkaninfo --summary
+    ```
+  </Tab>
+  
+  <Tab title="Arch Linux">
+    ```bash Install Vulkan
+    # Install packages
+    sudo pacman -S vulkan-devel openblas
+
+    # Verify
+    vulkaninfo --summary
+    ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step title="Configure Environment">
+```bash Set Vulkan Variables
+# Add to ~/.bashrc or ~/.zshrc
+export VULKAN_SDK=/usr
+export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu
+
+# Apply changes
+source ~/.bashrc
+
+# Verify
+echo $VULKAN_SDK
+echo $BLAS_INCLUDE_DIRS
+```
+</Step>
+
+<Step title="Build with Vulkan">
+```bash Vulkan Build
+# Auto-detection
+cd frontend
+./build-gpu.sh
+
+# Or force Vulkan
+TAURI_GPU_FEATURE=vulkan ./build-gpu.sh
+```
+</Step>
+
+</Steps>
+
+### OpenBLAS (Optimized CPU)
+
+For systems without GPU, OpenBLAS provides 2-3x faster CPU performance.
+
+```bash Install OpenBLAS
+# Ubuntu/Debian
+sudo apt install libopenblas-dev
+
+# Fedora
+sudo dnf install openblas-devel
+
+# Arch
+sudo pacman -S openblas
+
+# Build with OpenBLAS
+cd frontend
+TAURI_GPU_FEATURE=openblas ./build-gpu.sh
+```
+
+## Development Workflow
+
+### Quick Start
+
+<CodeGroup>
+
+```bash Clone Repository
+# Clone and navigate
+git clone https://github.com/Zackriya-Solutions/meeting-minutes
+cd meeting-minutes/frontend
+
+# Install dependencies
+pnpm install
+```
+
+```bash Development Mode
+# Run with hot reload (auto-detects GPU)
+./dev-gpu.sh
+
+# Or with clean start
+./clean_run.sh
+
+# With debug logging
+RUST_LOG=debug ./dev-gpu.sh
+```
+
+```bash Production Build
+# Clean production build
+./clean_build.sh
+
+# GPU-optimized build (recommended)
+./build-gpu.sh
+
+# Output location:
+# src-tauri/target/release/bundle/appimage/Meetily_0.3.0_amd64.AppImage
+```
+
+</CodeGroup>
+
+### Build Script Workflow
+
+The `build-gpu.sh` script orchestrates:
+
+1. **Location Detection**: Finds package.json (works from root or frontend/)
+2. **Package Manager**: Prefers pnpm, falls back to npm
+3. **GPU Detection**: Runs `scripts/auto-detect-gpu.js`
+4. **Sidecar Build**: Compiles `llama-helper` with detected features
+5. **Binary Copy**: Places binary in `src-tauri/binaries/`
+6. **Tauri Build**: Builds full application with features
+
+<Note>
+The script sets `NO_STRIP=true` to prevent AppImage symbol stripping issues.
+</Note>
+
+### Manual Feature Override
+
+Force specific acceleration backends:
+
+<CodeGroup>
+
+```bash Force CUDA
+TAURI_GPU_FEATURE=cuda ./build-gpu.sh
+```
+
+```bash Force Vulkan
+TAURI_GPU_FEATURE=vulkan ./build-gpu.sh
+```
+
+```bash Force ROCm
+TAURI_GPU_FEATURE=hipblas ./build-gpu.sh
+```
+
+```bash Force OpenBLAS
+TAURI_GPU_FEATURE=openblas ./build-gpu.sh
+```
+
+```bash Force CPU-only
+TAURI_GPU_FEATURE="" ./build-gpu.sh
+```
+
+</CodeGroup>
+
+## Audio System
+
+### ALSA and PulseAudio
+
+Linux audio stack uses ALSA (low-level) and PulseAudio/PipeWire (high-level).
+
+```bash Audio Dependencies
+# Ubuntu/Debian
+sudo apt install libasound2-dev pulseaudio
+
+# Fedora
+sudo dnf install alsa-lib-devel pulseaudio
+
+# Arch
+sudo pacman -S alsa-lib pulseaudio
+```
+
+### Audio Capture Configuration
+
+Meetily uses `cpal` for cross-platform audio capture:
+
+```rust Audio Configuration
+// Location: frontend/src-tauri/src/audio/capture/
+
+// Microphone: Direct ALSA/PulseAudio input
+// System audio: Loopback device or PulseAudio monitor
+```
+
+### System Audio Setup
+
+<Tabs>
+  <Tab title="PulseAudio">
+    ```bash PulseAudio Monitor
+    # List audio sources
+    pactl list sources
+
+    # Create loopback (optional)
+    pactl load-module module-loopback
+
+    # Or use monitor source directly
+    # Meetily can capture from monitor devices
+    ```
+  </Tab>
+  
+  <Tab title="PipeWire">
+    ```bash PipeWire Setup
+    # PipeWire provides virtual devices
+    pw-cli list-objects Node
+
+    # Create loopback
+    pw-loopback
+
+    # Meetily auto-detects PipeWire devices
+    ```
+  </Tab>
+</Tabs>
+
+## Platform-Specific Configuration
+
+### Cargo.toml Features
+
+```toml Linux-Specific
+[target.'cfg(target_os = "linux")'.dependencies]
+whisper-rs = { version = "0.13.2", features = ["raw-api"] }
+futures-channel = "0.3.31"
+
+# Audio via cpal (uses ALSA/PulseAudio)
+cpal = "0.15.3"
+```
+
+### AppImage Configuration
+
+```bash AppImage Build
+# NO_STRIP prevents symbol removal
+NO_STRIP=true ./build-gpu.sh
+
+# Output: src-tauri/target/release/bundle/appimage/
+
+# Make executable
+chmod +x Meetily_0.3.0_amd64.AppImage
+
+# Run
+./Meetily_0.3.0_amd64.AppImage
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="CUDA toolkit not found">
+**Symptoms**: Build completes but no CUDA acceleration
+
+**Solution**:
+```bash Fix CUDA Path
+# Check CUDA installation
+which nvcc
+ls /usr/local/cuda/bin/nvcc
+
+# Set CUDA_PATH if not auto-detected
+export CUDA_PATH=/usr/local/cuda
+echo 'export CUDA_PATH=/usr/local/cuda' >> ~/.bashrc
+
+# Verify
+nvcc --version
+
+# Rebuild
+./build-gpu.sh
+```
+</Accordion>
+
+<Accordion title="Vulkan detected but missing dependencies">
+**Symptoms**: Build fails with Vulkan errors
+
+**Solution**:
+```bash Install Missing Dependencies
+# Install Vulkan SDK
+sudo apt install vulkan-sdk
+
+# Install BLAS
+sudo apt install libopenblas-dev
+
+# Set environment variables
+export VULKAN_SDK=/usr
+export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu
+
+# Add to ~/.bashrc
+echo 'export VULKAN_SDK=/usr' >> ~/.bashrc
+echo 'export BLAS_INCLUDE_DIRS=/usr/include/x86_64-linux-gnu' >> ~/.bashrc
+
+source ~/.bashrc
+```
+</Accordion>
+
+<Accordion title="AppImage build stripping symbols">
+**Symptoms**: Runtime errors about missing symbols
+
+**Solution**:
+```bash Prevent Stripping
+# Use NO_STRIP (already in build-gpu.sh)
+NO_STRIP=true ./build-gpu.sh
+
+# Or set in environment
+export NO_STRIP=true
+pnpm run tauri:build
+```
+
+This is automatically handled by `build-gpu.sh`.
+</Accordion>
+
+<Accordion title="GPU acceleration not working">
+**Symptoms**: Slow transcription despite GPU installation
+
+**Diagnose**:
+```bash Check Detection
+# Run GPU detection script
+cd frontend
+node scripts/auto-detect-gpu.js
+
+# Should output: cuda, hipblas, vulkan, openblas, or nothing
+
+# Check build logs for features
+cargo build --release --verbose 2>&1 | grep -i "features"
+```
+
+**Solutions**:
+1. **NVIDIA**: Install CUDA toolkit, not just drivers
+2. **AMD**: Install ROCm, verify with `rocm-smi`
+3. **Intel/Other**: Install Vulkan SDK with BLAS
+</Accordion>
+
+<Accordion title="Audio devices not detected">
+**Symptoms**: No microphone or audio options in app
+
+**Solution**:
+```bash Fix Audio System
+# Check PulseAudio
+pulseaudio --check
+pulseaudio --start
+
+# List devices
+pactl list sources
+pactl list sinks
+
+# Restart audio
+pulseaudio --kill
+pulseaudio --start
+
+# Or use PipeWire
+systemctl --user restart pipewire
+```
+</Accordion>
+
+<Accordion title="ROCm not detected">
+**Symptoms**: AMD GPU but no ROCm acceleration
+
+**Solution**:
+```bash Verify ROCm
+# Check installation
+rocm-smi
+hipcc --version
+
+# Set ROCM_PATH
+export ROCM_PATH=/opt/rocm
+echo 'export ROCM_PATH=/opt/rocm' >> ~/.bashrc
+
+# Add user to groups
+sudo usermod -a -G render,video $USER
+
+# Reboot or re-login
+sudo reboot
+
+# Rebuild
+TAURI_GPU_FEATURE=hipblas ./build-gpu.sh
+```
+</Accordion>
+
+</AccordionGroup>
+
+### Build Environment Issues
+
+<CodeGroup>
+
+```bash Clean Build
+# Remove all artifacts
+cd frontend
+rm -rf node_modules
+rm -rf src-tauri/target
+rm -rf dist out
+rm -f package-lock.json
+
+# Reinstall and rebuild
+pnpm install
+./build-gpu.sh
+```
+
+```bash Debug Logging
+# Enable verbose logging
+RUST_LOG=debug ./build-gpu.sh
+
+# Trace level
+RUST_LOG=trace cargo build --release
+
+# Specific module
+RUST_LOG=app_lib::audio=debug ./dev-gpu.sh
+```
+
+```bash Verify Tools
+# Check all required tools
+which cmake node pnpm rustc cargo
+
+# Check versions
+cmake --version
+node --version
+pnpm --version
+rustc --version
+cargo --version
+```
+
+</CodeGroup>
+
+## Performance Comparison
+
+### Transcription Speed (10-minute audio, base model)
+
+| Configuration | Processing Time | Real-time Factor | Speed Boost |
+|--------------|----------------|------------------|-------------|
+| CUDA (RTX 3080) | ~2 minutes | 5x faster | 5-10x |
+| ROCm (RX 6800) | ~3 minutes | 3x faster | 4-8x |
+| Vulkan | ~4 minutes | 2.5x faster | 3-6x |
+| OpenBLAS (CPU) | ~5 minutes | 2x faster | 2-3x |
+| Pure CPU | ~10 minutes | 1x (baseline) | 1x |
+
+### Build Configuration Impact
+
+<CodeGroup>
+
+```toml Optimized Profile
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = false
+```
+
+```bash Environment Optimization
+# ~/.bashrc or ~/.zshrc
+
+# Use native CPU features
+export RUSTFLAGS="-C target-cpu=native"
+
+# Parallel compilation
+export CARGO_BUILD_JOBS=$(nproc)
+
+# Use mold linker (faster)
+export RUSTFLAGS="$RUSTFLAGS -C link-arg=-fuse-ld=mold"
+```
+
+</CodeGroup>
+
+## Development Best Practices
+
+### Testing
+
+```bash Run Tests
+# All tests
+cargo test --all-features
+
+# Platform-specific
+cargo test --target x86_64-unknown-linux-gnu
+
+# With logging
+RUST_LOG=debug cargo test -- --nocapture
+
+# Specific module
+cargo test audio::pipeline
+```
+
+### Benchmarking
+
+```bash Performance Testing
+# Run benchmarks
+cargo bench
+
+# Criterion benchmarks
+cargo bench --features cuda
+
+# Compare backends
+for feature in cuda vulkan openblas; do
+  echo "Testing $feature"
+  TAURI_GPU_FEATURE=$feature cargo bench
+done
+```
+
+### Debugging
+
+```bash Debug Builds
+# Development build with debug info
+cargo build
+
+# Release with debug symbols
+cargo build --profile release-with-debug
+
+# Use gdb
+gdb target/debug/meetily
+
+# Or lldb
+lldb target/debug/meetily
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="macOS Development" icon="apple" href="/advanced/macos-development">
+Learn about macOS-specific setup with Metal acceleration
+</Card>
+
+<Card title="Windows Development" icon="windows" href="/advanced/windows-development">
+Explore Windows development with CUDA and Vulkan
+</Card>
+
+<Card title="GPU Acceleration" icon="microchip" href="/configuration/gpu-acceleration">
+Deep dive into GPU acceleration configuration
+</Card>
+
+<Card title="Building from Source" icon="hammer" href="/advanced/building-from-source">
+Complete guide to building Meetily
+</Card>
+
+</CardGroup>
+
+## Resources
+
+- [NVIDIA CUDA Linux Guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/)
+- [AMD ROCm Documentation](https://rocm.docs.amd.com/)
+- [Vulkan on Linux](https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html)
+- [PulseAudio Documentation](https://www.freedesktop.org/wiki/Software/PulseAudio/)
+- [AppImage Best Practices](https://docs.appimage.org/packaging-guide/index.html)

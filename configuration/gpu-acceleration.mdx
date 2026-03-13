@@ -1,0 +1,526 @@
+---
+title: GPU Acceleration
+description: Enable hardware acceleration for faster transcription processing
+---
+
+## Overview
+
+GPU acceleration dramatically speeds up transcription by offloading compute-intensive operations from the CPU to the GPU. Meetily supports multiple GPU backends for cross-platform acceleration.
+
+<Note>
+GPU acceleration provides **5-10x faster** transcription compared to CPU-only processing. For example, a 30-minute meeting processes in 5 minutes instead of 45 minutes.
+</Note>
+
+## Supported GPU Backends
+
+Meetily automatically detects and uses the best available GPU backend:
+
+| Backend | Platform | Hardware | Performance |
+|---------|----------|----------|-------------|
+| **Metal** | macOS | Apple Silicon (M1/M2/M3/M4) | Excellent (10x faster) |
+| **CoreML** | macOS | Apple Silicon + Intel Macs | Good (5-8x faster) |
+| **CUDA** | Windows/Linux | NVIDIA GPUs | Excellent (8-12x faster) |
+| **Vulkan** | Windows/Linux | AMD, Intel, NVIDIA GPUs | Good (4-6x faster) |
+| **OpenCL** | Cross-platform | Most GPUs | Moderate (3-5x faster) |
+| **CPU** | All platforms | Fallback | Baseline (1x) |
+
+### Automatic Detection
+
+Meetily detects GPU capabilities on startup:
+
+```rust
+// Detection priority order:
+1. Metal (macOS Apple Silicon)
+2. CUDA (NVIDIA GPUs)
+3. Vulkan (AMD/Intel GPUs)
+4. OpenCL (Generic GPU)
+5. CPU (Fallback)
+```
+
+The best available backend is selected automatically. No manual configuration required.
+
+## Platform-Specific Setup
+
+### macOS (Metal)
+
+**Requirements:**
+- macOS 13.0 or later
+- Apple Silicon (M1/M2/M3/M4) or Intel Mac with AMD GPU
+- 8GB+ RAM recommended
+
+**Setup:**
+1. Metal is pre-installed on all modern Macs
+2. Meetily automatically enables Metal GPU acceleration
+3. No additional drivers needed
+
+**Verification:**
+```bash
+# Check logs on startup
+# Should see: "Apple Metal GPU support: enabled"
+# Location: Console.app → Meetily logs
+```
+
+<Note>
+**Apple Silicon Optimization**: M-series chips include dedicated Neural Engine cores. Meetily leverages both GPU and Neural Engine for maximum speed.
+</Note>
+
+### Windows (CUDA/Vulkan)
+
+#### NVIDIA GPUs (CUDA)
+
+**Requirements:**
+- NVIDIA GPU with Compute Capability 3.5+ (GTX 700 series or newer)
+- CUDA Toolkit 11.0 or later
+- Windows 10/11
+- 6GB+ VRAM recommended for large models
+
+**Setup:**
+1. Install NVIDIA drivers (latest recommended)
+   - Download: https://www.nvidia.com/drivers
+2. Install CUDA Toolkit
+   - Download: https://developer.nvidia.com/cuda-downloads
+   - Version: 11.8 or 12.x recommended
+3. Restart computer
+4. Launch Meetily - CUDA will be detected automatically
+
+**Verification:**
+```powershell
+# Check CUDA installation
+nvcc --version
+
+# Check GPU detection
+nvidia-smi
+```
+
+<Warning>
+CUDA requires ~2GB of disk space. Ensure adequate storage before installation.
+</Warning>
+
+#### AMD/Intel GPUs (Vulkan)
+
+**Requirements:**
+- AMD Radeon RX 400 series or newer
+- Intel Arc or Xe graphics
+- Vulkan SDK 1.2+
+- Windows 10/11
+
+**Setup:**
+1. Install latest GPU drivers
+   - AMD: https://www.amd.com/drivers
+   - Intel: https://www.intel.com/graphics-drivers
+2. Install Vulkan Runtime
+   - Download: https://vulkan.lunarg.com/sdk/home
+   - Or install via GPU driver (included)
+3. Restart computer
+4. Launch Meetily - Vulkan will be detected
+
+**Verification:**
+```powershell
+# Check Vulkan installation
+vulkaninfo | Select-String "API Version"
+```
+
+### Linux (CUDA/Vulkan)
+
+#### NVIDIA GPUs (CUDA)
+
+**Requirements:**
+- NVIDIA GPU with Compute Capability 3.5+
+- CUDA Toolkit 11.0+
+- Ubuntu 20.04+ / Fedora 35+ / Arch Linux
+
+**Setup (Ubuntu/Debian):**
+```bash
+# Install NVIDIA drivers
+sudo apt update
+sudo apt install nvidia-driver-525  # or latest
+
+# Install CUDA Toolkit
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+sudo dpkg -i cuda-keyring_1.0-1_all.deb
+sudo apt update
+sudo apt install cuda
+
+# Add to PATH
+echo 'export PATH=/usr/local/cuda/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+
+# Reboot
+sudo reboot
+```
+
+**Verification:**
+```bash
+nvcc --version
+nvidia-smi
+```
+
+#### AMD/Intel GPUs (Vulkan)
+
+**Setup (Ubuntu/Debian):**
+```bash
+# Install Vulkan drivers
+sudo apt update
+sudo apt install vulkan-tools mesa-vulkan-drivers  # Intel/AMD
+
+# Install AMDGPU drivers (AMD only)
+sudo apt install amdgpu-dkms libdrm-amdgpu1
+
+# Reboot
+sudo reboot
+```
+
+**Verification:**
+```bash
+vulkaninfo | grep "API Version"
+```
+
+## Hardware Performance Tiers
+
+Meetily categorizes hardware into performance tiers for optimization:
+
+### Ultra Tier
+
+**Hardware:**
+- Apple M3 Max/Ultra, M4 Pro/Max
+- NVIDIA RTX 4090/4080/3090 Ti
+- 16GB+ RAM
+- 8+ CPU cores
+
+**Performance:**
+- Processes 30-min meeting in 3-5 minutes
+- Real-time transcription capable (>1x speed)
+- Recommended models: `large-v3`, `large-v3-turbo`
+
+**Automatic Settings:**
+- Beam size: 5 (maximum quality)
+- GPU acceleration: Enabled
+- Flash attention: Enabled
+- Threads: 8
+
+### High Tier
+
+**Hardware:**
+- Apple M1/M2/M3, M1 Pro/Max
+- NVIDIA RTX 3060/3070/4060
+- AMD Radeon RX 6700 XT
+- 8GB+ RAM
+
+**Performance:**
+- Processes 30-min meeting in 8-12 minutes
+- Near real-time transcription
+- Recommended models: `large-v3-turbo`, `medium`
+
+**Automatic Settings:**
+- Beam size: 3 (high quality)
+- GPU acceleration: Enabled
+- Threads: 6
+
+### Medium Tier
+
+**Hardware:**
+- Intel/AMD CPUs (8+ cores)
+- Integrated GPUs (Intel Xe, AMD Vega)
+- NVIDIA GTX 1660/1650
+- 8GB RAM
+
+**Performance:**
+- Processes 30-min meeting in 20-30 minutes
+- Good for batch processing
+- Recommended models: `small`, `base`
+
+**Automatic Settings:**
+- Beam size: 2 (balanced)
+- GPU acceleration: Enabled (if available)
+- Threads: 4
+
+### Low Tier
+
+**Hardware:**
+- Older CPUs (4 cores)
+- No GPU or very old GPU
+- 4GB RAM
+
+**Performance:**
+- Processes 30-min meeting in 45-60 minutes
+- Best with `tiny` or `base` models
+- Real-time transcription not feasible
+
+**Automatic Settings:**
+- Beam size: 1 (fast)
+- GPU acceleration: Disabled (overhead not worth it)
+- Threads: 2
+
+<Note>
+Performance tier is detected automatically on first run. Settings are optimized based on detected capabilities.
+</Note>
+
+## GPU Memory Requirements
+
+Different models require different amounts of GPU memory (VRAM):
+
+### Whisper Models
+
+| Model | FP16 VRAM | INT8 VRAM | Notes |
+|-------|-----------|-----------|-------|
+| `tiny` | 1 GB | 0.5 GB | Fits on any GPU |
+| `base` | 1.5 GB | 0.8 GB | Entry-level GPUs |
+| `small` | 2 GB | 1 GB | Mid-range GPUs |
+| `medium` | 5 GB | 2.5 GB | Requires 6GB+ VRAM |
+| `large-v3-turbo` | 6 GB | 3 GB | Requires 8GB+ VRAM |
+| `large-v3` | 10 GB | 5 GB | High-end GPUs only |
+
+### Parakeet Models
+
+| Model | FP32 VRAM | INT8 VRAM | Notes |
+|-------|-----------|-----------|-------|
+| `parakeet-tdt-0.6b-v3-int8` | - | 1 GB | Efficient on most GPUs |
+
+<Warning>
+If GPU runs out of memory (OOM error), try:
+1. Use quantized model (Q5_0/Q5_1 for Whisper, int8 for Parakeet)
+2. Use smaller model
+3. Close other GPU-intensive applications
+4. Fall back to CPU processing
+</Warning>
+
+## Performance Optimization
+
+### Flash Attention
+
+Flash attention is an advanced optimization for Transformer models:
+
+**What it does:**
+- Reduces memory usage by 2-3x
+- Speeds up processing by 20-40%
+- Enables longer context windows
+
+**Requirements:**
+- High-end GPU (RTX 3000+, M2 Pro+)
+- Stable GPU drivers
+- High or Ultra performance tier
+
+**Auto-enabled for:**
+- Apple Silicon M2 Pro/Max/Ultra, M3/M4 (all variants)
+- NVIDIA RTX 3060 Ti and higher
+- Performance tier: High or Ultra
+
+```rust
+// Automatic flash attention detection
+let flash_attn_enabled = match (gpu_type, performance_tier) {
+    (Metal, High | Ultra) => true,
+    (Cuda, High | Ultra) => true,
+    _ => false  // Conservative for stability
+};
+```
+
+<Note>
+Flash attention is automatically enabled when beneficial. Manual configuration not required.
+</Note>
+
+### Adaptive Threading
+
+CPU threads complement GPU processing:
+
+**CPU Tasks:**
+- Audio preprocessing
+- Tokenization
+- Post-processing
+
+**Adaptive Configuration:**
+```rust
+Ultra tier:   8 threads
+High tier:    6 threads
+Medium tier:  4 threads
+Low tier:     2 threads
+```
+
+**Windows Special Case:**
+- Beam size locked to 2 for stability
+- Thread count: min(CPU cores, 8)
+- Ensures consistent performance across diverse hardware
+
+### GPU Utilization Monitoring
+
+Check GPU usage during transcription:
+
+**macOS:**
+```bash
+# Monitor GPU usage
+sudo powermetrics --samplers gpu_power -i 1000
+```
+
+**Windows (NVIDIA):**
+```powershell
+# Monitor GPU usage
+nvidia-smi -l 1
+```
+
+**Linux (NVIDIA):**
+```bash
+watch -n 1 nvidia-smi
+```
+
+**Expected Utilization:**
+- During transcription: 60-90% GPU usage
+- Idle: 0-5% GPU usage
+- Low usage (less than 30%): CPU bottleneck or I/O limited
+
+## Troubleshooting
+
+### GPU Not Detected
+
+**Symptom**: Logs show "No GPU acceleration features detected"
+
+**Solutions:**
+
+1. **Check drivers installed:**
+   ```bash
+   # macOS - Metal should be automatic
+   # Windows/Linux NVIDIA
+   nvidia-smi
+   
+   # Windows/Linux AMD
+   vulkaninfo
+   ```
+
+2. **Verify CUDA/Vulkan installation:**
+   ```bash
+   # CUDA
+   nvcc --version
+   echo $CUDA_PATH
+   
+   # Vulkan
+   vulkaninfo | grep "API Version"
+   ```
+
+3. **Check environment variables:**
+   ```bash
+   # CUDA
+   export CUDA_PATH=/usr/local/cuda
+   export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+   ```
+
+4. **Restart Meetily** after driver installation
+
+### GPU Slower Than CPU
+
+**Symptom**: GPU mode slower than CPU mode
+
+**Causes:**
+1. **Small model + powerful CPU**: GPU overhead not worth it
+2. **Insufficient VRAM**: Swapping to system RAM
+3. **Old GPU drivers**: Update to latest
+4. **PCIe bottleneck**: Check GPU connection
+
+**Solutions:**
+- Use larger models (medium, large) to benefit from GPU
+- Update GPU drivers
+- Close other GPU applications
+- Try different backend (Vulkan vs CUDA)
+
+### Out of Memory (OOM)
+
+**Symptom**: "CUDA out of memory" or "Metal allocation failed"
+
+**Solutions:**
+
+1. **Use quantized model:**
+   - `large-v3-q5_0` instead of `large-v3`
+   - 50% memory reduction
+
+2. **Use smaller model:**
+   - `medium` instead of `large-v3-turbo`
+   - `small` for 2-4GB VRAM GPUs
+
+3. **Close GPU applications:**
+   - Games, video editing, browsers with GPU acceleration
+   - Check with `nvidia-smi` or Activity Monitor
+
+4. **Increase system RAM:**
+   - Some GPU memory can overflow to RAM
+   - 16GB+ RAM recommended for large models
+
+5. **Disable GPU acceleration:**
+   - Fall back to CPU processing
+   - Settings → Transcription → Disable GPU
+
+### Poor GPU Utilization
+
+**Symptom**: GPU usage stays low (10-30%) during transcription
+
+**Causes:**
+1. **CPU bottleneck**: Preprocessing/tokenization limits GPU
+2. **I/O bottleneck**: Slow disk/SSD
+3. **Small batch size**: Not enough work for GPU
+
+**Solutions:**
+- Increase chunk size (Settings → Transcription)
+- Use faster storage (SSD instead of HDD)
+- Close background CPU-intensive apps
+- Update to latest Meetily version (optimizations)
+
+### Driver Compatibility Issues
+
+**macOS:**
+- Metal works out-of-the-box on modern macOS
+- Update to macOS 13+ for best performance
+
+**Windows NVIDIA:**
+- Use CUDA 11.8 or 12.1+ (most compatible)
+- Driver version 525+ recommended
+- Avoid alpha/beta drivers
+
+**Windows AMD:**
+- Adrenalin 23.x or newer
+- Enable "Vulkan API" in driver settings
+
+**Linux:**
+- Use proprietary drivers (not nouveau)
+- Check `nvidia-smi` and `vulkaninfo` work
+- Kernel 5.10+ recommended
+
+## Performance Benchmarks
+
+Real-world transcription times (30-minute meeting):
+
+### Apple Silicon
+
+| Hardware | Model | Time | RTF |
+|----------|-------|------|-----|
+| M4 Max | large-v3 | 4 min | 7.5x |
+| M3 Pro | large-v3-turbo | 5 min | 6x |
+| M2 | medium | 8 min | 3.75x |
+| M1 | small | 6 min | 5x |
+
+### NVIDIA (Windows/Linux)
+
+| Hardware | Model | Time | RTF |
+|----------|-------|------|-----|
+| RTX 4090 | large-v3 | 3 min | 10x |
+| RTX 3080 | large-v3-turbo | 6 min | 5x |
+| RTX 3060 | medium | 10 min | 3x |
+| GTX 1660 Ti | small | 15 min | 2x |
+
+### AMD (Windows/Linux, Vulkan)
+
+| Hardware | Model | Time | RTF |
+|----------|-------|------|-----|
+| RX 7900 XTX | large-v3-turbo | 8 min | 3.75x |
+| RX 6800 XT | medium | 12 min | 2.5x |
+| RX 6600 | small | 18 min | 1.67x |
+
+**RTF = Real-Time Factor** (higher is better)
+- 1x = processes at real-time speed
+- 5x = processes 5x faster than real-time
+
+<Note>
+Benchmarks vary based on audio quality, language, and system configuration. Your results may differ.
+</Note>
+
+## See Also
+
+- [Whisper Models](/configuration/whisper-models) - Choose the right Whisper model for your hardware
+- [Parakeet Models](/configuration/parakeet-models) - Lightweight alternative for faster processing
+- [System Requirements](/installation/macos) - Minimum and recommended hardware specifications

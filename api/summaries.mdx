@@ -1,0 +1,617 @@
+---
+title: 'Summary Endpoints'
+description: 'AI-powered meeting summarization and processing'
+icon: 'sparkles'
+---
+
+## Process Transcript
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5167/process-transcript \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Full transcript text here...",
+    "model": "claude",
+    "model_name": "claude-3-5-sonnet-20241022",
+    "meeting_id": "meeting-1704067200000",
+    "chunk_size": 5000,
+    "overlap": 1000,
+    "custom_prompt": "Focus on action items and decisions"
+  }'
+```
+
+```python Python
+import requests
+
+data = {
+    "text": "Full transcript text here...",
+    "model": "claude",
+    "model_name": "claude-3-5-sonnet-20241022",
+    "meeting_id": "meeting-1704067200000",
+    "chunk_size": 5000,
+    "overlap": 1000,
+    "custom_prompt": "Focus on action items and decisions"
+}
+
+response = requests.post(
+    "http://localhost:5167/process-transcript",
+    json=data
+)
+result = response.json()
+process_id = result["process_id"]
+```
+
+```typescript TypeScript
+const response = await fetch('http://localhost:5167/process-transcript', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    text: 'Full transcript text here...',
+    model: 'claude',
+    model_name: 'claude-3-5-sonnet-20241022',
+    meeting_id: 'meeting-1704067200000',
+    chunk_size: 5000,
+    overlap: 1000,
+    custom_prompt: 'Focus on action items and decisions'
+  })
+});
+
+const result = await response.json();
+const processId = result.process_id;
+```
+</CodeGroup>
+
+Start AI-powered summarization of a meeting transcript. This endpoint processes the transcript in chunks using the specified AI model and generates structured summaries including action items, key decisions, and meeting notes.
+
+<Note>
+  This is an **asynchronous operation**. The endpoint returns immediately with a `process_id`. Use the [Get Summary](#get-summary) endpoint to check the status and retrieve results.
+</Note>
+
+### Request Body
+
+<ParamField body="text" type="string" required>
+  The complete transcript text to process (max 10MB)
+</ParamField>
+
+<ParamField body="model" type="string" required>
+  AI provider to use: `"claude"`, `"ollama"`, `"groq"`, or `"openai"`
+</ParamField>
+
+<ParamField body="model_name" type="string" required>
+  Specific model name for the provider:
+  - Claude: `claude-3-5-sonnet-20241022`, `claude-3-opus-20240229`
+  - Ollama: `llama3`, `phi4`, `qwen2.5`, etc.
+  - Groq: `llama-3.3-70b-versatile`, `mixtral-8x7b-32768`
+  - OpenAI: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+</ParamField>
+
+<ParamField body="meeting_id" type="string" required>
+  The meeting ID to associate the summary with
+</ParamField>
+
+<ParamField body="chunk_size" type="integer" default={5000}>
+  Number of characters per chunk (adjusted automatically for Ollama models)
+</ParamField>
+
+<ParamField body="overlap" type="integer" default={1000}>
+  Number of characters to overlap between chunks (ensures context continuity)
+</ParamField>
+
+<ParamField body="custom_prompt" type="string" default="Generate a summary of the meeting transcript.">
+  Additional instructions for the AI model
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string" required>
+  Status message (always `"Processing started"`)
+</ResponseField>
+
+<ResponseField name="process_id" type="string" required>
+  The meeting ID to use for checking status (same as input `meeting_id`)
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Processing Started
+{
+  "message": "Processing started",
+  "process_id": "meeting-1704067200000"
+}
+```
+
+```json 500 - Error
+{
+  "detail": "ANTHROPIC_API_KEY environment variable not set"
+}
+```
+</ResponseExample>
+
+---
+
+## Get Summary
+
+<CodeGroup>
+```bash cURL
+curl http://localhost:5167/get-summary/meeting-1704067200000
+```
+
+```python Python
+import requests
+import time
+
+meeting_id = "meeting-1704067200000"
+
+# Poll for completion
+while True:
+    response = requests.get(f"http://localhost:5167/get-summary/{meeting_id}")
+    result = response.json()
+    
+    if result["status"] == "completed":
+        print("Summary ready!")
+        print(result["data"])
+        break
+    elif result["status"] == "error":
+        print(f"Error: {result['error']}")
+        break
+    else:
+        print("Processing...")
+        time.sleep(2)
+```
+
+```typescript TypeScript
+const meetingId = 'meeting-1704067200000';
+
+// Poll for completion
+while (true) {
+  const response = await fetch(`http://localhost:5167/get-summary/${meetingId}`);
+  const result = await response.json();
+  
+  if (result.status === 'completed') {
+    console.log('Summary ready!', result.data);
+    break;
+  } else if (result.status === 'error') {
+    console.error('Error:', result.error);
+    break;
+  } else {
+    console.log('Processing...');
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+```
+</CodeGroup>
+
+Retrieve the status and results of a summary processing job.
+
+### Path Parameters
+
+<ParamField path="meeting_id" type="string" required>
+  The meeting ID returned from the Process Transcript endpoint
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string" required>
+  Processing status: `"processing"`, `"completed"`, or `"error"`
+</ResponseField>
+
+<ResponseField name="meetingName" type="string">
+  Meeting name extracted from the transcript (null if processing/error)
+</ResponseField>
+
+<ResponseField name="meeting_id" type="string" required>
+  The meeting identifier
+</ResponseField>
+
+<ResponseField name="start" type="string">
+  ISO 8601 timestamp when processing started
+</ResponseField>
+
+<ResponseField name="end" type="string">
+  ISO 8601 timestamp when processing completed (null if still processing)
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The structured summary data (only present when status is `"completed"`)
+  
+  <Expandable title="Summary Data Structure">
+    <ResponseField name="MeetingName" type="string">
+      Extracted meeting title
+    </ResponseField>
+    
+    <ResponseField name="_section_order" type="array">
+      Array of section keys in display order
+    </ResponseField>
+    
+    <ResponseField name="[section_key]" type="object">
+      Dynamic section objects (e.g., `people`, `session_summary`, `action_items`)
+      
+      <Expandable title="Section Object">
+        <ResponseField name="title" type="string">
+          Section display title
+        </ResponseField>
+        
+        <ResponseField name="blocks" type="array">
+          Array of content blocks
+          
+          <Expandable title="Block Object">
+            <ResponseField name="id" type="string">
+              Unique block identifier
+            </ResponseField>
+            
+            <ResponseField name="type" type="string">
+              Block type: `"text"`, `"bullet"`, `"heading1"`, `"heading2"`
+            </ResponseField>
+            
+            <ResponseField name="content" type="string">
+              Block text content
+            </ResponseField>
+            
+            <ResponseField name="color" type="string">
+              Color hint: `"gray"` or empty string for default
+            </ResponseField>
+          </Expandable>
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="error" type="string">
+      Error message (only present when status is `"error"`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json 202 - Processing
+{
+  "status": "processing",
+  "meetingName": null,
+  "meeting_id": "meeting-1704067200000",
+  "start": "2024-01-01T09:00:00",
+  "end": null,
+  "data": null
+}
+```
+
+```json 200 - Completed
+{
+  "status": "completed",
+  "meetingName": "Team Standup - Q1 Planning",
+  "meeting_id": "meeting-1704067200000",
+  "start": "2024-01-01T09:00:00",
+  "end": "2024-01-01T09:02:30",
+  "data": {
+    "MeetingName": "Team Standup - Q1 Planning",
+    "_section_order": [
+      "people",
+      "session_summary",
+      "key_items_decisions",
+      "immediate_action_items",
+      "next_steps",
+      "critical_deadlines"
+    ],
+    "people": {
+      "title": "People",
+      "blocks": [
+        {
+          "id": "p1",
+          "type": "bullet",
+          "content": "Alice Johnson (Engineering Lead)",
+          "color": ""
+        },
+        {
+          "id": "p2",
+          "type": "bullet",
+          "content": "Bob Smith (Product Manager)",
+          "color": ""
+        }
+      ]
+    },
+    "session_summary": {
+      "title": "Session Summary",
+      "blocks": [
+        {
+          "id": "s1",
+          "type": "text",
+          "content": "Team discussed Q1 planning and feature priorities.",
+          "color": ""
+        }
+      ]
+    },
+    "immediate_action_items": {
+      "title": "Immediate Action Items",
+      "blocks": [
+        {
+          "id": "a1",
+          "type": "bullet",
+          "content": "Alice: Deploy authentication module by EOD",
+          "color": ""
+        },
+        {
+          "id": "a2",
+          "type": "bullet",
+          "content": "Bob: Schedule design review meeting",
+          "color": ""
+        }
+      ]
+    }
+  }
+}
+```
+
+```json 400 - Error
+{
+  "status": "error",
+  "meetingName": null,
+  "meeting_id": "meeting-1704067200000",
+  "start": "2024-01-01T09:00:00",
+  "end": "2024-01-01T09:00:15",
+  "data": null,
+  "error": "Anthropic API key not configured. Please set your API key in the model settings."
+}
+```
+
+```json 404 - Not Found
+{
+  "status": "error",
+  "meetingName": null,
+  "meeting_id": "meeting-1704067200000",
+  "data": null,
+  "start": null,
+  "end": null,
+  "error": "Meeting ID not found"
+}
+```
+</ResponseExample>
+
+---
+
+## Save Meeting Summary
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5167/save-meeting-summary \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meeting_id": "meeting-1704067200000",
+    "summary": {
+      "MeetingName": "Updated Meeting Name",
+      "action_items": {
+        "title": "Action Items",
+        "blocks": []
+      }
+    }
+  }'
+```
+
+```python Python
+import requests
+
+data = {
+    "meeting_id": "meeting-1704067200000",
+    "summary": {
+        "MeetingName": "Updated Meeting Name",
+        "action_items": {
+            "title": "Action Items",
+            "blocks": []
+        }
+    }
+}
+
+response = requests.post(
+    "http://localhost:5167/save-meeting-summary",
+    json=data
+)
+```
+
+```typescript TypeScript
+const response = await fetch('http://localhost:5167/save-meeting-summary', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    meeting_id: 'meeting-1704067200000',
+    summary: {
+      MeetingName: 'Updated Meeting Name',
+      action_items: {
+        title: 'Action Items',
+        blocks: []
+      }
+    }
+  })
+});
+```
+</CodeGroup>
+
+Update or save a modified meeting summary. This endpoint is used when users edit the AI-generated summary.
+
+### Request Body
+
+<ParamField body="meeting_id" type="string" required>
+  The meeting identifier
+</ParamField>
+
+<ParamField body="summary" type="object" required>
+  The complete summary object (same structure as returned by Get Summary)
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string" required>
+  Success message
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "message": "Meeting summary saved successfully"
+}
+```
+
+```json 404 - Not Found
+{
+  "detail": "Meeting with ID meeting-1704067200000 not found"
+}
+```
+</ResponseExample>
+
+---
+
+## How AI Summarization Works
+
+### Chunking Strategy
+
+Long transcripts are split into overlapping chunks to fit within model context windows:
+
+```
+Transcript (20,000 chars)
+│
+├─ Chunk 1: chars 0-5000
+├─ Chunk 2: chars 4000-9000 (1000 char overlap)
+├─ Chunk 3: chars 8000-13000
+└─ Chunk 4: chars 12000-17000
+```
+
+**Why overlapping?** Ensures no information is lost at chunk boundaries.
+
+### Structured Output
+
+The AI models are prompted to return structured JSON with predefined sections:
+
+<CardGroup cols={2}>
+  <Card title="People" icon="users">
+    Participants and their roles
+  </Card>
+  <Card title="Session Summary" icon="file-lines">
+    High-level overview of the meeting
+  </Card>
+  <Card title="Key Items & Decisions" icon="lightbulb">
+    Important decisions made
+  </Card>
+  <Card title="Immediate Action Items" icon="list-check">
+    Tasks with owners and deadlines
+  </Card>
+  <Card title="Next Steps" icon="arrow-right">
+    Follow-up actions and future plans
+  </Card>
+  <Card title="Critical Deadlines" icon="calendar-clock">
+    Time-sensitive items
+  </Card>
+</CardGroup>
+
+### Model-Specific Behavior
+
+| Provider | Chunk Size | Notes |
+|----------|------------|-------|
+| **Claude** | 5,000 chars | Uses Pydantic AI structured output |
+| **OpenAI** | 5,000 chars | Uses Pydantic AI structured output |
+| **Groq** | 5,000 chars | Uses Pydantic AI structured output |
+| **Ollama (Llama/Phi)** | 10,000 chars | Smaller context, adjusted automatically |
+| **Ollama (Other)** | 30,000 chars | Larger context window models |
+
+<Tip>
+  For best results with Ollama, use models with larger context windows like `qwen2.5:32k` or `llama3.1:70b`.
+</Tip>
+
+---
+
+## Configuration Endpoints
+
+### Get Model Config
+
+```bash
+curl http://localhost:5167/get-model-config
+```
+
+Retrieve the currently configured AI model settings.
+
+**Response:**
+```json
+{
+  "provider": "claude",
+  "model": "claude-3-5-sonnet-20241022",
+  "whisperModel": "large-v3",
+  "apiKey": "sk-ant-..."
+}
+```
+
+### Save Model Config
+
+```bash
+curl -X POST http://localhost:5167/save-model-config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "claude",
+    "model": "claude-3-5-sonnet-20241022",
+    "whisperModel": "large-v3",
+    "apiKey": "sk-ant-..."
+  }'
+```
+
+Save model configuration and API key.
+
+**Request Body:**
+- `provider`: `"claude"`, `"ollama"`, `"groq"`, or `"openai"`
+- `model`: Model name for the provider
+- `whisperModel`: Whisper model for transcription
+- `apiKey`: API key (optional for Ollama)
+
+---
+
+## Error Handling
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="API Key Not Configured">
+    **Error:** `"Anthropic API key not configured. Please set your API key in the model settings."`
+    
+    **Solution:** Save your API key using the [Save Model Config](#save-model-config) endpoint or configure it in the frontend settings.
+  </Accordion>
+  
+  <Accordion title="Empty Transcript">
+    **Error:** `"Empty transcript text provided"`
+    
+    **Solution:** Ensure the `text` field contains actual transcript content.
+  </Accordion>
+  
+  <Accordion title="Invalid Chunk Parameters">
+    **Error:** `"chunk_size must be positive"`
+    
+    **Solution:** Use positive values for `chunk_size` and non-negative values for `overlap`.
+  </Accordion>
+  
+  <Accordion title="Meeting Not Found">
+    **Error:** `"Meeting ID not found"`
+    
+    **Solution:** Ensure the meeting was created using the [Save Transcript](/api/transcripts#save-transcript) endpoint before processing.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices
+
+<Steps>
+  <Step title="Save Transcripts First">
+    Always save transcripts using the `/save-transcript` endpoint before processing. This creates the meeting record.
+  </Step>
+  
+  <Step title="Choose the Right Model">
+    - **Quick testing**: Use Ollama with a small model like `phi4`
+    - **Best quality**: Use Claude (`claude-3-5-sonnet-20241022`)
+    - **Fast API**: Use Groq (`llama-3.3-70b-versatile`)
+  </Step>
+  
+  <Step title="Poll Intelligently">
+    Check status every 2-5 seconds. Processing typically takes 10-60 seconds depending on transcript length and model.
+  </Step>
+  
+  <Step title="Use Custom Prompts">
+    Add context with `custom_prompt` to get summaries tailored to your needs:
+    ```json
+    {
+      "custom_prompt": "Focus on technical decisions and code review feedback"
+    }
+    ```
+  </Step>
+</Steps>

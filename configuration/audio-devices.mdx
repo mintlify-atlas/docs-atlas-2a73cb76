@@ -1,0 +1,358 @@
+---
+title: Audio Devices
+description: Configure microphone and system audio device selection, enumeration, and permissions in Meetily
+---
+
+## Overview
+
+Meetily captures audio from two sources: your **microphone** (input device) and **system audio** (output device). The application automatically detects available devices and provides intelligent fallback strategies to ensure stable recordings.
+
+## Device Selection
+
+### Automatic Device Detection
+
+Meetily automatically enumerates all available audio devices on your system when the application starts. The device list is platform-specific and uses the most reliable audio backend for each operating system.
+
+**macOS:**
+- Input devices: CoreAudio (via cpal)
+- System audio: ScreenCaptureKit with process tap (macOS 13+)
+- Built-in speakers are filtered out from system audio options
+- Bluetooth devices are automatically detected and handled
+
+**Windows:**
+- Uses WASAPI (Windows Audio Session API) for both input and output
+- Supports loopback capture for system audio
+- Falls back to default host if WASAPI enumeration fails
+
+**Linux:**
+- Input devices: ALSA/PulseAudio
+- System audio: PulseAudio monitor sources
+- Devices marked with "monitor" are shown as system audio options
+
+### Default Device Behavior
+
+If you don't specify devices when starting a recording, Meetily uses your system's default devices:
+
+```typescript
+// Use system defaults
+await invoke('start_recording', {
+  mic_device_name: null,      // Uses default microphone
+  system_device_name: null,   // Uses default system audio
+  meeting_name: "My Meeting"
+});
+```
+
+### Specifying Custom Devices
+
+You can specify exact devices by name:
+
+```typescript
+await invoke('start_recording', {
+  mic_device_name: "Blue Yeti Microphone (input)",
+  system_device_name: "BlackHole 2ch (output)",
+  meeting_name: "My Meeting"
+});
+```
+
+<Note>
+Device names must include the type suffix: `(input)` for microphones or `(output)` for system audio devices.
+</Note>
+
+## Bluetooth Device Handling (macOS)
+
+### Automatic Fallback Strategy
+
+Meetily includes intelligent Bluetooth device detection on macOS to prevent audio sync issues. When a Bluetooth device is detected as your default microphone, the app automatically falls back to your built-in MacBook microphone.
+
+**Why this matters:**
+- Bluetooth devices can have variable sample rates due to CoreAudio resampling
+- Variable rates cause sync issues when mixing microphone and system audio
+- Built-in devices have fixed, consistent sample rates for reliable mixing
+
+**Detection criteria:**
+- Device name contains "AirPods", "Bluetooth", or "Wireless"
+- CoreAudio API reports device as Bluetooth transport type
+
+**Behavior:**
+
+| Default Microphone | Action | Reason |
+|-------------------|--------|--------|
+| AirPods Pro | Override to built-in mic | Prevents variable sample rate issues |
+| Built-in Microphone | Use as-is | Already stable |
+| Wired USB Mic | Use as-is | Stable sample rate |
+
+**System Audio (Speakers):**
+
+Unlike microphones, Bluetooth speakers are **NOT overridden** on macOS. This is because:
+- ScreenCaptureKit captures the digital stream **before** Bluetooth encoding
+- Audio must be captured from the active output device (where sound is playing)
+- Overriding to built-in speakers would capture silence if audio plays through Bluetooth
+
+### Disabling Bluetooth Fallback
+
+If you want to force using your Bluetooth microphone (accepting potential sync issues), manually specify it:
+
+```typescript
+await invoke('start_recording', {
+  mic_device_name: "AirPods Pro (input)",  // Force Bluetooth
+  system_device_name: null,
+  meeting_name: "My Meeting"
+});
+```
+
+<Warning>
+Using Bluetooth microphones may cause audio sync drift between microphone and system audio, especially in longer recordings.
+</Warning>
+
+## Device Monitoring
+
+### Disconnect Detection
+
+Meetily monitors your selected audio devices during recording and detects disconnections:
+
+**Monitoring intervals:**
+- Bluetooth devices: Checked every 5 seconds (with 3-cycle grace period)
+- Wired devices: Checked every 3 seconds (with 2-cycle grace period)
+
+**What happens on disconnect:**
+1. Device monitor detects the device is no longer in the system device list
+2. Grace period allows for brief interruptions (Bluetooth can momentarily disconnect)
+3. After grace period expires, `DeviceDisconnected` event is emitted
+4. Recording can continue with remaining devices or prompt user to stop
+
+**Reconnection:**
+- Monitor continues checking for device to reappear
+- `DeviceReconnected` event is emitted when device returns
+- User can choose to resume or continue with current devices
+
+### Device List Changes
+
+When new devices are plugged in or removed, Meetily emits a `DeviceListChanged` event. You can refresh the device list:
+
+```typescript
+const devices = await invoke<AudioDevice[]>('list_audio_devices');
+```
+
+## Permissions
+
+### macOS Permissions
+
+Meetily requires two permissions on macOS:
+
+1. **Microphone Access** (`NSMicrophoneUsageDescription`)
+   - Required for microphone capture
+   - Automatically requested when accessing input devices
+   - Can be manually triggered via Settings → Privacy & Security → Microphone
+
+2. **Screen Recording** (`NSScreenCaptureUsageDescription`) - Required for ScreenCaptureKit system audio capture (macOS 14.4+)
+   - Automatically requested when creating Core Audio tap
+   - If denied, system audio will be silent (zeros)
+   - Can be manually enabled via Settings → Privacy & Security → Screen Recording
+
+**Triggering Permission Prompts:**
+
+You can manually trigger the microphone permission dialog:
+
+```typescript
+const granted = await invoke<boolean>('trigger_audio_permission');
+if (!granted) {
+  console.log('Microphone permission denied');
+}
+```
+
+This function:
+1. Gets the default input device
+2. Builds and starts a temporary input stream (triggers macOS permission dialog)
+3. Returns `true` if permission granted, `false` if denied
+
+### Windows Permissions
+
+Windows 10/11 apps require microphone permission:
+
+1. Go to Settings → Privacy → Microphone
+2. Enable "Allow apps to access your microphone"
+3. Enable permission for Meetily specifically
+
+WASAPI loopback (system audio) does not require additional permissions.
+
+### Linux Permissions
+
+PulseAudio/ALSA permissions are typically granted by default. If you encounter issues:
+
+```bash
+# Add your user to the audio group
+sudo usermod -aG audio $USER
+
+# Restart session for changes to take effect
+```
+
+## Device Enumeration Details
+
+### Platform-Specific Configuration
+
+Meetily uses different audio backends optimized for each platform:
+
+**macOS** (`configure_macos_audio`):
+```rust
+// Input devices from CoreAudio
+for device in host.input_devices()? {
+    devices.push(AudioDevice::new(name, DeviceType::Input));
+}
+
+// Output devices (excluding built-in speakers)
+for device in host.output_devices()? {
+    if !name.to_lowercase().contains("speakers") {
+        devices.push(AudioDevice::new(name, DeviceType::Output));
+    }
+}
+```
+
+**Windows** (`configure_windows_audio`):
+```rust
+// Use WASAPI host for reliable enumeration
+let wasapi_host = cpal::host_from_id(cpal::HostId::Wasapi)?;
+
+// Output devices (for loopback capture)
+for device in wasapi_host.output_devices()? {
+    devices.push(AudioDevice::new(name, DeviceType::Output));
+}
+
+// Input devices
+for device in wasapi_host.input_devices()? {
+    devices.push(AudioDevice::new(name, DeviceType::Input));
+}
+```
+
+**Linux** (`configure_linux_audio`):
+```rust
+// Input devices from ALSA/PulseAudio
+for device in host.input_devices()? {
+    devices.push(AudioDevice::new(name, DeviceType::Input));
+}
+
+// PulseAudio monitor sources for system audio
+if name.contains("monitor") {
+    devices.push(AudioDevice::new(
+        format!("{} (System Audio)", name),
+        DeviceType::Output
+    ));
+}
+```
+
+## Troubleshooting
+
+### No Devices Found
+
+**Symptoms:** Empty device list or "No audio devices found" error.
+
+**Solutions:**
+1. Check system audio settings to ensure devices are enabled
+2. On macOS: Grant microphone and screen recording permissions
+3. On Windows: Ensure WASAPI service is running
+4. On Linux: Check PulseAudio is running: `pulseaudio --check`
+5. Restart the application to re-enumerate devices
+
+### Device Not Found Error
+
+**Symptoms:** "Device not found: [device name]" error when starting recording.
+
+**Solutions:**
+1. Device was unplugged or disabled - check physical connection
+2. Device name changed (common with Bluetooth reconnection) - re-select device
+3. Refresh device list: `await invoke('list_audio_devices')`
+4. Try using default devices instead of specifying names
+
+### System Audio Not Capturing (macOS)
+
+**Symptoms:** Recording only captures microphone, system audio is silent.
+
+**Solutions:**
+1. Grant Screen Recording permission (required for ScreenCaptureKit)
+2. Ensure audio is actually playing through the selected output device
+3. If using virtual device (BlackHole), confirm it's set as default output
+4. Check Console.app for Core Audio errors
+
+### Audio Sync Issues with Bluetooth
+
+**Symptoms:** Microphone and system audio drift out of sync over time.
+
+**Solutions:**
+1. Let Meetily automatically fall back to built-in microphone (recommended)
+2. Use a wired microphone instead of Bluetooth
+3. Reduce recording length (sync drift accumulates over time)
+4. Manually specify built-in microphone to bypass Bluetooth
+
+### Device Permissions Denied (macOS 14.4+)
+
+**Symptoms:** Permission dialog doesn't appear or system audio is silent.
+
+**Solutions:**
+1. Manually grant permissions in System Settings → Privacy & Security
+2. Reset permissions: `tccutil reset Microphone` and `tccutil reset ScreenCapture`
+3. Restart Meetily after granting permissions
+4. Check if permissions are inherited from parent app (Finder, Terminal)
+
+## Advanced Configuration
+
+### Custom Device Selection Logic
+
+You can implement custom device selection by querying available devices and filtering:
+
+```typescript
+// Get all devices
+const devices = await invoke<AudioDevice[]>('list_audio_devices');
+
+// Filter for specific criteria
+const micDevices = devices.filter(d => d.device_type === 'Input');
+const usbMics = micDevices.filter(d => d.name.includes('USB'));
+
+// Select first USB microphone
+const selectedMic = usbMics[0]?.name || null;
+```
+
+### Fallback Device Chain
+
+Implement a fallback chain for maximum reliability:
+
+```typescript
+const preferredDevices = [
+  "Blue Yeti (input)",
+  "Built-in Microphone (input)",
+  null  // System default
+];
+
+for (const deviceName of preferredDevices) {
+  try {
+    await invoke('start_recording', { 
+      mic_device_name: deviceName,
+      // ...
+    });
+    break; // Success
+  } catch (error) {
+    console.log(`Failed with ${deviceName}, trying next...`);
+  }
+}
+```
+
+### Virtual Audio Devices
+
+For system audio capture, you may need virtual audio devices:
+
+**macOS:**
+- Install [BlackHole](https://existential.audio/blackhole/) (free, open-source)
+- Set BlackHole as system output or use Multi-Output Device
+- Select BlackHole in Meetily as system audio device
+
+**Windows:**
+- Use WASAPI loopback (no virtual device needed)
+- Or install VB-Cable for more control
+
+**Linux:**
+- PulseAudio monitor sources (automatic)
+- Or configure `null-sink` for specific routing
+
+## See Also
+
+- [Audio Mixing Configuration](/configuration/audio-mixing) - Professional mixing features
+- [System Audio Capture](/configuration/system-audio) - Platform-specific system audio details
+- [Privacy Settings](/configuration/privacy) - Audio data privacy controls

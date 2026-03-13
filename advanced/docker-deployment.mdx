@@ -1,0 +1,613 @@
+---
+title: 'Docker Deployment'
+description: 'Deploy Meetily backend services using Docker containers'
+icon: 'docker'
+---
+
+Docker deployment provides the easiest and most reliable way to run Meetily backend services with automatic dependency management, GPU detection, and cross-platform compatibility.
+
+## Why Docker?
+
+<CardGroup cols={2}>
+  <Card title="Easy Setup" icon="rocket">
+    Automated dependency installation and configuration
+  </Card>
+  <Card title="Isolation" icon="shield">
+    Complete environment isolation from host system
+  </Card>
+  <Card title="Portability" icon="box">
+    Universal deployment across Windows, macOS, and Linux
+  </Card>
+  <Card title="Consistency" icon="check">
+    Identical runtime environment across all platforms
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+<Tabs>
+  <Tab title="Windows">
+    1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+    2. Enable WSL 2 backend
+    3. Allocate at least 8GB RAM to Docker
+    4. (Optional) Install [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) for GPU support
+  </Tab>
+  <Tab title="macOS">
+    1. Install [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+    2. Allocate at least 8GB RAM in Docker Desktop settings
+    3. Grant necessary permissions (microphone, screen recording)
+  </Tab>
+  <Tab title="Linux">
+    ```bash
+    # Install Docker Engine
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+
+    # Install Docker Compose
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+
+    # (Optional) Install nvidia-container-toolkit for GPU
+    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+    curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+    sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+    ```
+  </Tab>
+</Tabs>
+
+## Quick Start
+
+### Interactive Setup (Recommended)
+
+The interactive mode guides you through all configuration options:
+
+<Tabs>
+  <Tab title="Windows">
+    ```powershell
+    cd backend
+
+    # Build images
+    .\build-docker.ps1 cpu
+
+    # Start with interactive setup
+    .\run-docker.ps1 start -Interactive
+    ```
+  </Tab>
+  <Tab title="macOS/Linux">
+    ```bash
+    cd backend
+
+    # Build images
+    ./build-docker.sh cpu
+
+    # Start with interactive setup
+    ./run-docker.sh start --interactive
+    ```
+  </Tab>
+</Tabs>
+
+The interactive setup will guide you through:
+1. **Model Selection** - Choose from 20+ Whisper models
+2. **Language Settings** - Select from 40+ supported languages
+3. **Port Configuration** - Automatic conflict detection
+4. **Database Setup** - Migrate existing data or start fresh
+5. **GPU Configuration** - Auto-detection and setup
+6. **Advanced Features** - Translation, diarization options
+
+### Quick Start (Defaults)
+
+For a fast start with sensible defaults:
+
+<CodeGroup>
+```bash Windows
+cd backend
+.\build-docker.ps1 cpu
+.\run-docker.ps1 start -Detach
+```
+
+```bash macOS/Linux
+cd backend
+./build-docker.sh cpu
+./run-docker.sh start --detach
+```
+</CodeGroup>
+
+## Docker Compose Configuration
+
+The `docker-compose.yml` defines three main services:
+
+### Service Architecture
+
+```yaml
+services:
+  whisper-server:        # Audio transcription (CPU/GPU)
+  meetily-backend:       # FastAPI meeting management
+  model-downloader:      # Automatic model downloads
+```
+
+### Key Configuration
+
+<AccordionGroup>
+  <Accordion title="Whisper Server Service" icon="microphone">
+    ```yaml
+    whisper-server:
+      build:
+        dockerfile: ${DOCKERFILE:-Dockerfile.server-cpu}
+      ports:
+        - "${WHISPER_PORT:-8178}:8178"
+      environment:
+        - WHISPER_MODEL=${WHISPER_MODEL:-models/ggml-base.en.bin}
+        - WHISPER_THREADS=${WHISPER_THREADS:-0}
+        - WHISPER_USE_GPU=${WHISPER_USE_GPU:-true}
+      volumes:
+        - whisper_models:/app/models
+        - whisper_uploads:/app/uploads
+      mem_limit: 4g
+    ```
+  </Accordion>
+
+  <Accordion title="Backend API Service" icon="server">
+    ```yaml
+    meetily-backend:
+      build:
+        dockerfile: Dockerfile.app
+      ports:
+        - "${APP_PORT:-5167}:5167"
+      environment:
+        - DATABASE_PATH=/app/data/meeting_minutes.db
+        - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      volumes:
+        - ./data:/app/data
+        - meeting_app_logs:/app/logs
+      mem_limit: 2g
+      depends_on:
+        whisper-server:
+          condition: service_healthy
+    ```
+  </Accordion>
+
+  <Accordion title="Model Downloader Service" icon="cloud-arrow-down">
+    ```yaml
+    model-downloader:
+      image: alpine/curl:latest
+      volumes:
+        - whisper_models:/models
+      environment:
+        - MODEL_NAME=${MODEL_NAME:-base.en}
+      # Automatically downloads models from Hugging Face
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+Create a `.env` file in the backend directory:
+
+```bash
+# Whisper Configuration
+WHISPER_MODEL=models/ggml-base.en.bin
+WHISPER_PORT=8178
+WHISPER_THREADS=0                    # 0 = auto-detect
+WHISPER_USE_GPU=true
+WHISPER_LANGUAGE=en
+WHISPER_TRANSLATE=false
+WHISPER_DIARIZE=false
+WHISPER_PRINT_PROGRESS=true
+
+# Backend Configuration
+APP_PORT=5167
+OLLAMA_HOST=http://host.docker.internal:11434
+
+# Build Configuration
+DOCKERFILE=Dockerfile.server-cpu     # or Dockerfile.server-gpu
+MODEL_NAME=base.en                   # Model to download
+
+# Resource Limits
+FORCE_GPU=false                      # Force GPU mode
+DEBUG=false                          # Enable debug output
+```
+
+## Volume Management
+
+Docker uses named volumes for persistent data:
+
+| Volume | Purpose | Location |
+|--------|---------|----------|
+| `whisper_models` | Whisper model files | Persistent across restarts |
+| `whisper_uploads` | Temporary audio files | Cleared on cleanup |
+| `meeting_app_logs` | Application logs | Persistent logs |
+| `./data` | SQLite database | Bind mount to host |
+
+### Volume Operations
+
+```bash
+# List volumes
+docker volume ls
+
+# Inspect volume
+docker volume inspect whisper_models
+
+# Backup database
+cp backend/data/meeting_minutes.db ~/backups/meeting_minutes_$(date +%Y%m%d).db
+
+# Clean up unused volumes
+docker volume prune
+```
+
+## Port Configuration
+
+Default ports used by Meetily:
+
+| Service | Port | Protocol | Purpose |
+|---------|------|----------|----------|
+| Whisper Server | 8178 | HTTP | Audio transcription API |
+| Backend API | 5167 | HTTP | Meeting management API |
+| WebSocket | 5167 | WS | Real-time updates |
+
+### Custom Port Configuration
+
+<Tabs>
+  <Tab title="Windows">
+    ```powershell
+    # Start with custom ports
+    .\run-docker.ps1 start -Port 8180 -AppPort 5170 -Detach
+    ```
+  </Tab>
+  <Tab title="macOS/Linux">
+    ```bash
+    # Start with custom ports
+    ./run-docker.sh start --port 8180 --app-port 5170 --detach
+    ```
+  </Tab>
+</Tabs>
+
+## GPU Acceleration
+
+### NVIDIA GPU Support
+
+<Steps>
+  <Step title="Install NVIDIA Container Toolkit">
+    Follow the [official installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+  </Step>
+  <Step title="Build GPU Image">
+    ```bash
+    ./build-docker.sh gpu
+    ```
+  </Step>
+  <Step title="Start with GPU">
+    <Tabs>
+      <Tab title="Windows">
+        ```powershell
+        .\run-docker.ps1 start -Gpu -Model large-v3 -Detach
+        ```
+      </Tab>
+      <Tab title="Linux">
+        ```bash
+        ./run-docker.sh start --gpu --model large-v3 --detach
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Verify GPU Access">
+    ```bash
+    docker exec -it whisper-server nvidia-smi
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  GPU acceleration requires:
+  - NVIDIA GPU with compute capability 3.5+
+  - NVIDIA drivers 450.80.02+ (Linux) or 456.38+ (Windows)
+  - nvidia-container-toolkit installed
+</Warning>
+
+## Management Commands
+
+### Service Control
+
+<Tabs>
+  <Tab title="Windows">
+    ```powershell
+    # Start services
+    .\run-docker.ps1 start -Detach
+
+    # Stop services
+    .\run-docker.ps1 stop
+
+    # Restart services
+    .\run-docker.ps1 restart
+
+    # Check status
+    .\run-docker.ps1 status
+
+    # View logs
+    .\run-docker.ps1 logs -Service whisper -Follow
+    .\run-docker.ps1 logs -Service app -Lines 100
+
+    # Shell access
+    .\run-docker.ps1 shell -Service whisper
+
+    # Clean up
+    .\run-docker.ps1 clean
+    ```
+  </Tab>
+  <Tab title="macOS/Linux">
+    ```bash
+    # Start services
+    ./run-docker.sh start --detach
+
+    # Stop services
+    ./run-docker.sh stop
+
+    # Restart services
+    ./run-docker.sh restart
+
+    # Check status
+    ./run-docker.sh status
+
+    # View logs
+    ./run-docker.sh logs --service whisper --follow
+    ./run-docker.sh logs --service app --lines 100
+
+    # Shell access
+    ./run-docker.sh shell --service whisper
+
+    # Clean up
+    ./run-docker.sh clean
+    ```
+  </Tab>
+</Tabs>
+
+### Advanced Operations
+
+```bash
+# Build specific variant
+./build-docker.sh cpu          # CPU-only
+./build-docker.sh gpu          # NVIDIA GPU
+./build-docker.sh macos        # macOS optimized
+./build-docker.sh both         # Build all variants
+
+# Multi-platform build
+./build-docker.sh cpu --platforms "linux/amd64,linux/arm64" --push
+
+# Test GPU configuration
+./run-docker.sh gpu-test
+
+# Setup database migration
+./run-docker.sh setup-db --auto
+
+# Download models manually
+./run-docker.sh models download base.en
+```
+
+## Resource Management
+
+### Memory Allocation
+
+<Warning>
+  **Audio Processing Requirements:**
+  Docker containers with insufficient resources will drop audio chunks, causing:
+  - Log messages: "Dropped old audio chunk X due to queue overflow"
+  - Missing or incomplete transcriptions
+  - Processing delays
+
+  **Recommended Allocation:**
+  - 8GB+ RAM per service (16GB total)
+  - 2+ CPU cores per service
+</Warning>
+
+### Configure Docker Desktop Resources
+
+1. Open Docker Desktop Settings
+2. Navigate to Resources
+3. Set:
+   - **CPUs:** 4-8 cores
+   - **Memory:** 16GB+
+   - **Swap:** 2GB
+   - **Disk:** 50GB+
+
+### Monitor Resource Usage
+
+```bash
+# Real-time stats
+docker stats
+
+# Specific service
+docker stats whisper-server meetily-backend
+
+# Check for resource issues in logs
+docker logs whisper-server | grep -i "dropped\|overflow\|memory"
+```
+
+## Platform-Specific Notes
+
+<Tabs>
+  <Tab title="Windows">
+    ### WSL 2 Backend
+    - Ensure WSL 2 is enabled in Docker Desktop
+    - Use PowerShell (not CMD) for scripts
+    - GPU support requires Windows 11 or Windows 10 21H2+
+
+    ### Troubleshooting
+    ```powershell
+    # Check WSL version
+    wsl --list --verbose
+
+    # Update WSL
+    wsl --update
+
+    # Restart Docker Desktop
+    net stop com.docker.service
+    net start com.docker.service
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ### Profile Selection
+    macOS uses a dedicated profile for optimized performance:
+
+    ```bash
+    # Start macOS-optimized services
+    COMPOSE_PROFILES=macos docker-compose up -d
+    ```
+
+    ### Rosetta 2 (Intel Macs)
+    Docker automatically handles architecture translation via Rosetta 2.
+
+    ### System Audio
+    Requires BlackHole virtual audio device for system audio capture.
+  </Tab>
+  <Tab title="Linux">
+    ### User Permissions
+    Add your user to the docker group:
+
+    ```bash
+    sudo usermod -aG docker $USER
+    newgrp docker
+    ```
+
+    ### NVIDIA GPU
+    ```bash
+    # Verify GPU access
+    nvidia-smi
+
+    # Test Docker GPU
+    docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Container Won't Start" icon="circle-exclamation">
+    **Check logs:**
+    ```bash
+    docker logs whisper-server
+    docker logs meetily-backend
+    ```
+
+    **Common issues:**
+    - Port conflicts: Change ports in `.env`
+    - Insufficient memory: Increase Docker memory allocation
+    - Image corruption: Rebuild with `--no-cache`
+  </Accordion>
+
+  <Accordion title="GPU Not Detected" icon="microchip">
+    **Verify setup:**
+    ```bash
+    # Check NVIDIA drivers
+    nvidia-smi
+
+    # Test Docker GPU access
+    docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+
+    # Check container GPU access
+    docker exec -it whisper-server nvidia-smi
+    ```
+
+    **Enable WSL2 GPU (Windows):**
+    - Update Windows to 21H2 or later
+    - Update WSL: `wsl --update`
+    - Enable GPU in Docker Desktop Settings
+  </Accordion>
+
+  <Accordion title="Audio Chunks Dropped" icon="triangle-exclamation">
+    **Symptoms:**
+    ```
+    Dropped old audio chunk X due to queue overflow
+    ```
+
+    **Solutions:**
+    1. Increase Docker memory to 16GB+
+    2. Reduce concurrent processing
+    3. Use smaller Whisper model
+    4. Increase CPU allocation
+  </Accordion>
+
+  <Accordion title="Database Permission Errors" icon="lock">
+    **Fix permissions:**
+    ```bash
+    # Stop services
+    docker-compose down
+
+    # Fix ownership
+    sudo chown -R $(id -u):$(id -g) backend/data/
+
+    # Restart
+    docker-compose up -d
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Deployment
+
+### Docker Compose Production Stack
+
+```yaml docker-compose.prod.yml
+version: '3.8'
+
+services:
+  whisper-server:
+    image: meetily-whisper:latest
+    restart: always
+    environment:
+      - WHISPER_MODEL=models/ggml-large-v3.bin
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          memory: 4G
+
+  meetily-backend:
+    image: meetily-backend:latest
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+```
+
+### Security Considerations
+
+<Steps>
+  <Step title="Use Non-Root User">
+    Containers already run as non-root user (UID 1000)
+  </Step>
+  <Step title="Restrict CORS">
+    Update `allow_origins` in `main.py` from `["*"]` to specific domains
+  </Step>
+  <Step title="Enable HTTPS">
+    Use nginx reverse proxy with SSL/TLS certificates
+  </Step>
+  <Step title="Secure API Keys">
+    Use Docker secrets or external secret management
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Setup" icon="server" href="/advanced/backend-setup">
+    Learn about native backend installation
+  </Card>
+  <Card title="Database Management" icon="database" href="/advanced/database-management">
+    Understand database schema and backups
+  </Card>
+</CardGroup>

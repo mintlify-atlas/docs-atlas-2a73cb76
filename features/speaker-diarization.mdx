@@ -1,0 +1,135 @@
+---
+title: "Speaker Diarization"
+description: "Automatically identify and distinguish between different speakers in your meeting transcripts"
+---
+
+# Speaker Diarization
+
+Speaker diarization is the process of automatically identifying "who spoke when" in an audio recording. This advanced feature helps you understand conversation flow and attribute statements to specific participants.
+
+## Availability
+
+<Warning>
+**PRO Feature**: Speaker diarization is currently available only in **Meetily PRO**. The Community Edition does not include this capability.
+</Warning>
+
+### Community Edition
+
+The open-source Community Edition focuses on privacy-first transcription and AI summaries without speaker identification. All transcripts are generated as a continuous stream without speaker labels.
+
+### Meetily PRO
+
+Meetily PRO includes advanced speaker identification capabilities:
+
+- **Automatic speaker detection**: Distinguishes between different voices
+- **Speaker labeling**: Tags each segment with speaker identifiers (Speaker 1, Speaker 2, etc.)
+- **Timeline visualization**: See who spoke at what time
+- **Custom speaker names**: Assign real names to detected speakers
+
+## How It Works
+
+Speaker diarization uses acoustic features to cluster speech segments by speaker:
+
+1. **Voice Activity Detection (VAD)**: Identifies speech vs. silence
+2. **Speaker Embedding**: Extracts unique voice characteristics
+3. **Clustering**: Groups segments by speaker similarity
+4. **Labeling**: Assigns speaker identifiers to each segment
+
+## Use Cases
+
+### Team Meetings
+
+Track individual contributions and follow up on specific action items by person:
+
+- "What did Sarah say about the deadline?"
+- "Review all comments from the product manager"
+- "Find Alex's feedback on the design"
+
+### Interviews & Research
+
+Distinguish between interviewer and subject responses for qualitative analysis.
+
+### Multi-Party Discussions
+
+Understand conversation dynamics in group settings:
+
+- Board meetings with multiple executives
+- Panel discussions
+- Workshop sessions with facilitators and participants
+
+## Limitations
+
+### Current Constraints
+
+Even in PRO, speaker diarization works best under certain conditions:
+
+- **Clear audio**: Minimal background noise improves accuracy
+- **Distinct voices**: Similar voices may be harder to distinguish
+- **Non-overlapping speech**: Simultaneous speakers are challenging
+- **Minimum speech per speaker**: Each speaker needs sufficient audio samples
+
+### Privacy Considerations
+
+Speaker identification creates additional privacy implications:
+
+- **Biometric data**: Voice prints are considered biometric identifiers in many jurisdictions
+- **Consent requirements**: Some regions require explicit consent for voice identification
+- **Data retention**: Consider policies for storing speaker embeddings
+
+## Alternatives in Community Edition
+
+### Manual Speaker Attribution
+
+While Community Edition doesn't automate speaker identification, you can:
+
+1. **Review raw transcripts**: Listen to recordings alongside transcripts
+2. **Manually annotate**: Add speaker names during editing
+3. **Use meeting context**: Leverage meeting metadata (attendees, agenda)
+4. **AI summary insights**: LLM summaries may infer speakers from context
+
+### Example Workflow
+
+```markdown
+1. Record meeting with all participants
+2. Generate transcript (speaker-agnostic)
+3. Generate AI summary
+4. Review summary for attributed quotes
+5. Cross-reference with your notes to identify speakers
+```
+
+## Coming to PRO
+
+<Note>
+Speaker diarization is marked as **"Coming Soon"** in the Meetily PRO roadmap. Check the [PRO pricing page](https://meetily.ai/pro/) for the latest feature availability.
+</Note>
+
+### Planned Capabilities
+
+- Real-time speaker detection during recording
+- Speaker profile persistence across meetings
+- Voice enrollment for known participants
+- Integration with calendar attendee lists
+- Export formats with speaker attribution
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Import & Enhance" icon="upload" href="/features/import-enhance">
+    Re-transcribe existing recordings with new models
+  </Card>
+  <Card title="Custom Templates" icon="file-lines" href="/features/custom-templates">
+    Structure summaries with speaker-specific sections
+  </Card>
+  <Card title="Export Options" icon="download" href="/features/export-options">
+    Export transcripts and summaries in multiple formats
+  </Card>
+  <Card title="AI Summaries" icon="sparkles" href="/features/ai-summaries">
+    Generate intelligent meeting summaries
+  </Card>
+</CardGroup>
+
+## Learn More
+
+- [Meetily PRO Features](https://meetily.ai/pro/)
+- [Privacy & Compliance](/configuration/privacy)
+- [Architecture Overview](/advanced/architecture)

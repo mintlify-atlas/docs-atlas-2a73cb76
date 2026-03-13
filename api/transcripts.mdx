@@ -1,0 +1,326 @@
+---
+title: 'Transcript Endpoints'
+description: 'Save and manage meeting transcripts'
+icon: 'file-lines'
+---
+
+## Save Transcript
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:5167/save-transcript \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meeting_title": "Team Standup",
+    "folder_path": "/path/to/meeting/folder",
+    "transcripts": [
+      {
+        "id": "segment-1",
+        "text": "Good morning everyone",
+        "timestamp": "2024-01-01T09:00:00",
+        "audio_start_time": 0.0,
+        "audio_end_time": 2.5,
+        "duration": 2.5
+      }
+    ]
+  }'
+```
+
+```python Python
+import requests
+
+data = {
+    "meeting_title": "Team Standup",
+    "folder_path": "/path/to/meeting/folder",
+    "transcripts": [
+        {
+            "id": "segment-1",
+            "text": "Good morning everyone",
+            "timestamp": "2024-01-01T09:00:00",
+            "audio_start_time": 0.0,
+            "audio_end_time": 2.5,
+            "duration": 2.5
+        }
+    ]
+}
+
+response = requests.post(
+    "http://localhost:5167/save-transcript",
+    json=data
+)
+result = response.json()
+meeting_id = result["meeting_id"]
+```
+
+```typescript TypeScript
+interface TranscriptSegment {
+  id: string;
+  text: string;
+  timestamp: string;
+  audio_start_time?: number;
+  audio_end_time?: number;
+  duration?: number;
+}
+
+const response = await fetch('http://localhost:5167/save-transcript', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    meeting_title: 'Team Standup',
+    folder_path: '/path/to/meeting/folder',
+    transcripts: [
+      {
+        id: 'segment-1',
+        text: 'Good morning everyone',
+        timestamp: '2024-01-01T09:00:00',
+        audio_start_time: 0.0,
+        audio_end_time: 2.5,
+        duration: 2.5
+      }
+    ]
+  })
+});
+
+const result = await response.json();
+const meetingId = result.meeting_id;
+```
+</CodeGroup>
+
+Save transcript segments for a meeting without generating a summary. This endpoint creates a new meeting and stores all transcript segments with optional audio synchronization timestamps.
+
+<Note>
+  This endpoint is used by the Tauri frontend to save transcripts as they are generated during recording. The `audio_start_time`, `audio_end_time`, and `duration` fields enable audio-transcript synchronization for playback features.
+</Note>
+
+### Request Body
+
+<ParamField body="meeting_title" type="string" required>
+  The title of the meeting
+</ParamField>
+
+<ParamField body="transcripts" type="array" required>
+  Array of transcript segments to save
+  
+  <Expandable title="Transcript Object">
+    <ParamField body="id" type="string" required>
+      Unique identifier for the transcript segment
+    </ParamField>
+    
+    <ParamField body="text" type="string" required>
+      The transcript text content
+    </ParamField>
+    
+    <ParamField body="timestamp" type="string" required>
+      ISO 8601 timestamp when the segment was created
+    </ParamField>
+    
+    <ParamField body="audio_start_time" type="number">
+      Recording-relative start time in seconds (for audio sync)
+    </ParamField>
+    
+    <ParamField body="audio_end_time" type="number">
+      Recording-relative end time in seconds (for audio sync)
+    </ParamField>
+    
+    <ParamField body="duration" type="number">
+      Duration of the audio segment in seconds
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="folder_path" type="string">
+  Optional path to the meeting folder (used for new folder structure)
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string" required>
+  Status of the operation (always `"success"`)
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Success message
+</ResponseField>
+
+<ResponseField name="meeting_id" type="string" required>
+  The unique identifier of the created meeting (format: `meeting-{timestamp}`)
+</ResponseField>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "status": "success",
+  "message": "Transcript saved successfully",
+  "meeting_id": "meeting-1704067200000"
+}
+```
+
+```json 500 - Error
+{
+  "detail": "Error message"
+}
+```
+</ResponseExample>
+
+---
+
+## Understanding Audio Synchronization
+
+The transcript endpoints support audio-transcript synchronization through three optional timestamp fields:
+
+<CardGroup cols={3}>
+  <Card title="audio_start_time" icon="play">
+    The start time in the recording (in seconds) where this transcript segment begins
+  </Card>
+  <Card title="audio_end_time" icon="stop">
+    The end time in the recording (in seconds) where this transcript segment ends
+  </Card>
+  <Card title="duration" icon="clock">
+    The total duration of the audio segment (in seconds)
+  </Card>
+</CardGroup>
+
+### Example: Audio Sync Timeline
+
+```typescript
+// First transcript segment
+{
+  text: "Welcome to the meeting",
+  audio_start_time: 0.0,    // Starts at beginning of recording
+  audio_end_time: 2.5,      // Ends at 2.5 seconds
+  duration: 2.5             // 2.5 seconds long
+}
+
+// Second transcript segment (after 30 seconds of silence)
+{
+  text: "Let's begin with updates",
+  audio_start_time: 30.0,   // Starts at 30 seconds
+  audio_end_time: 33.2,     // Ends at 33.2 seconds
+  duration: 3.2             // 3.2 seconds long
+}
+```
+
+This enables features like:
+- Click a transcript segment to jump to that point in the audio
+- Highlight the current transcript as audio plays
+- Seek through long meetings by transcript
+
+---
+
+## Database Storage
+
+Transcripts are stored in the `transcripts` table with the following schema:
+
+```sql
+CREATE TABLE transcripts (
+    id TEXT PRIMARY KEY,
+    meeting_id TEXT NOT NULL,
+    transcript TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    summary TEXT,
+    action_items TEXT,
+    key_points TEXT,
+    audio_start_time REAL,
+    audio_end_time REAL,
+    duration REAL,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+);
+```
+
+### Legacy Support
+
+<Info>
+  The `audio_start_time`, `audio_end_time`, and `duration` columns were added via migration. Existing databases without these columns will have them added automatically on first run.
+</Info>
+
+---
+
+## Full Transcript Processing
+
+For generating AI summaries from complete transcripts, see the [Process Transcript](/api/summaries#process-transcript) endpoint in the Summaries section.
+
+---
+
+## Data Models
+
+### SaveTranscriptRequest
+```typescript
+interface SaveTranscriptRequest {
+  meeting_title: string;
+  transcripts: Transcript[];
+  folder_path?: string;  // Optional, for new folder structure
+}
+```
+
+### Transcript
+```typescript
+interface Transcript {
+  id: string;
+  text: string;
+  timestamp: string;              // ISO 8601 format
+  audio_start_time?: number;      // Optional, in seconds
+  audio_end_time?: number;        // Optional, in seconds
+  duration?: number;              // Optional, in seconds
+}
+```
+
+### SaveTranscriptResponse
+```typescript
+interface SaveTranscriptResponse {
+  status: "success";
+  message: string;
+  meeting_id: string;  // Format: meeting-{timestamp_ms}
+}
+```
+
+---
+
+## Common Use Cases
+
+### Real-time Transcript Saving
+
+The Tauri frontend calls this endpoint continuously during recording:
+
+```typescript
+// Called every time Whisper generates a new transcript segment
+async function saveTranscriptSegment(
+  meetingTitle: string,
+  segments: TranscriptSegment[]
+) {
+  const response = await fetch('http://localhost:5167/save-transcript', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      meeting_title: meetingTitle,
+      transcripts: segments
+    })
+  });
+  
+  const result = await response.json();
+  return result.meeting_id;
+}
+```
+
+### Batch Import
+
+Import transcripts from external sources:
+
+```python
+import requests
+import json
+
+# Load transcript from file
+with open('meeting_transcript.json', 'r') as f:
+    transcript_data = json.load(f)
+
+# Save to Meetily
+response = requests.post(
+    "http://localhost:5167/save-transcript",
+    json={
+        "meeting_title": "Imported Meeting",
+        "transcripts": transcript_data["segments"]
+    }
+)
+
+print(f"Meeting ID: {response.json()['meeting_id']}")
+```

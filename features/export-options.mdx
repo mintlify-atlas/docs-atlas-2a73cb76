@@ -1,0 +1,412 @@
+---
+title: "Export Options"
+description: "Export meeting transcripts and summaries in multiple formats for sharing and archival"
+---
+
+# Export Options
+
+Meetily provides flexible export capabilities to share your meeting transcripts and AI-generated summaries in various formats. All exports maintain the structure and formatting of your content.
+
+## Available Formats
+
+### Community Edition
+
+The open-source Community Edition supports:
+
+- **Markdown (.md)**: Text-based format with formatting preserved
+- **JSON**: Structured data format with timestamps and metadata
+- **Text (.txt)**: Plain text without formatting (transcripts only)
+
+### Meetily PRO
+
+PRO version includes additional professional formats:
+
+- **PDF**: Professional documents with formatting and branding
+- **DOCX**: Microsoft Word format for editing and collaboration
+- **HTML**: Web-ready format with styling
+- **Markdown (.md)**: Enhanced with custom styling options
+
+## Exporting Summaries
+
+### Markdown Export (Community Edition)
+
+Export AI-generated summaries as markdown files:
+
+<Steps>
+  <Step title="Open Summary View">
+    Navigate to a meeting with a generated summary
+  </Step>
+  <Step title="Click Export Button">
+    Look for the export/download icon in the summary toolbar
+  </Step>
+  <Step title="Save File">
+    Summary downloads as `meeting-name.md` to your downloads folder
+  </Step>
+</Steps>
+
+### Markdown Format Structure
+
+Exported markdown preserves your summary structure:
+
+```markdown
+# Meeting Name
+
+## Summary
+
+Executive overview paragraph...
+
+## Key Decisions
+
+- Decision 1
+- Decision 2
+- Decision 3
+
+## Action Items
+
+| Owner | Task | Due Date |
+| --- | --- | --- |
+| Alice | Update documentation | 2024-03-15 |
+| Bob | Review PR | 2024-03-12 |
+
+## Discussion Highlights
+
+Detailed discussion summary...
+```
+
+### Copy to Clipboard
+
+Quickly copy summary content:
+
+1. Select text in summary view
+2. Use standard copy shortcut (Cmd+C / Ctrl+C)
+3. Paste into any application
+
+<Tip>
+You can also copy individual sections by selecting specific blocks within the summary editor.
+</Tip>
+
+## Exporting Transcripts
+
+### JSON Export (Default Storage)
+
+Transcripts are automatically saved as JSON in your recordings folder:
+
+**Location**:
+- macOS: `~/Documents/Meetily Recordings/{meeting-name}/transcript.json`
+- Windows: `C:\Users\{username}\Documents\Meetily Recordings\{meeting-name}\transcript.json`
+
+**Format**:
+```json
+[
+  {
+    "id": "segment-1",
+    "text": "Let's start today's standup.",
+    "timestamp": "2024-03-13T10:00:00.000Z",
+    "audio_start_time": 0.0,
+    "audio_end_time": 2.5,
+    "duration": 2.5
+  },
+  {
+    "id": "segment-2",
+    "text": "I completed the user authentication feature.",
+    "timestamp": "2024-03-13T10:00:03.000Z",
+    "audio_start_time": 3.0,
+    "audio_end_time": 6.2,
+    "duration": 3.2
+  }
+]
+```
+
+### Accessing Raw Transcripts
+
+Open the meeting folder to access:
+
+- `audio.wav` - Full meeting recording
+- `transcript.json` - Timestamped segments
+- `metadata.json` - Meeting information
+- `summary.md` - Exported summary (if generated)
+
+### Converting to Other Formats
+
+You can process JSON transcripts with external tools:
+
+#### Python Script Example
+
+```python
+import json
+
+# Load transcript
+with open('transcript.json', 'r') as f:
+    segments = json.load(f)
+
+# Convert to plain text
+text = '\n'.join([seg['text'] for seg in segments])
+with open('transcript.txt', 'w') as f:
+    f.write(text)
+
+# Convert to timestamped format
+with open('transcript_timestamped.txt', 'w') as f:
+    for seg in segments:
+        time = seg['audio_start_time']
+        mins = int(time // 60)
+        secs = int(time % 60)
+        f.write(f"[{mins:02d}:{secs:02d}] {seg['text']}\n")
+```
+
+## Meetily PRO Export Features
+
+### PDF Export
+
+Professional PDF documents with:
+
+- **Custom branding**: Add company logo and colors
+- **Table of contents**: Auto-generated navigation
+- **Page numbers**: Automatic pagination
+- **Timestamp references**: Clickable links to audio (in digital PDFs)
+- **Formatting preserved**: Tables, lists, and emphasis maintained
+
+### DOCX Export
+
+Microsoft Word format for:
+
+- **Collaborative editing**: Share with team for comments
+- **Template support**: Use custom Word templates
+- **Style mapping**: Summary sections to Word styles
+- **Track changes**: Enable revision tracking
+
+### HTML Export
+
+Web-ready format with:
+
+- **Responsive design**: Mobile-friendly layout
+- **Search functionality**: In-page text search
+- **Syntax highlighting**: For code snippets in technical meetings
+- **Print optimization**: Clean printing from browser
+
+## Export Customization
+
+### File Naming
+
+Exported files use meeting names by default:
+
+```
+Meeting Name → meeting-name.md
+Daily Standup 2024-03-13 → daily-standup-2024-03-13.md
+```
+
+<Tip>
+Use descriptive meeting names for better file organization:
+- ✅ "Q1 Planning - Marketing Team - 2024-03-13"
+- ❌ "New Meeting 1"
+</Tip>
+
+### Metadata Inclusion
+
+Exported markdown includes metadata header:
+
+```markdown
+---
+Meeting: Q1 Planning Session
+Date: 2024-03-13
+Duration: 1h 23m
+Attendees: Alice, Bob, Carol
+Template: Standard Meeting Notes
+---
+
+# Q1 Planning Session
+
+...
+```
+
+### Custom Export Location
+
+Exports save to your default downloads folder. To organize exports:
+
+1. Create a dedicated folder (e.g., "Meeting Exports")
+2. After export, move files to organized structure:
+   ```
+   Meeting Exports/
+   ├── 2024/
+   │   ├── Q1/
+   │   │   ├── client-meetings/
+   │   │   ├── team-standups/
+   │   │   └── retrospectives/
+   ```
+
+## Batch Export
+
+<Note>
+Batch export is a planned feature for both Community Edition and PRO.
+</Note>
+
+### Planned Capabilities
+
+- Export multiple meetings at once
+- Choose format per meeting or apply to all
+- Organize exports in date-based folder structure
+- Filter meetings by date range, tags, or participants
+
+## Integration Options
+
+### Manual Integration
+
+Share exported files with:
+
+- **Confluence**: Upload markdown as page content
+- **Notion**: Import markdown files as pages
+- **Slack**: Share files in channels
+- **Google Drive**: Upload for team access
+- **Email**: Attach PDF/DOCX to meeting follow-ups
+
+### API Access (Advanced)
+
+Developers can access meeting data via backend API:
+
+```bash
+# Get meeting details with transcript
+curl http://localhost:5167/api/meetings/{meeting-id}
+
+# Get summary JSON
+curl http://localhost:5167/get-summary/{process-id}
+```
+
+See [API Documentation](/api/overview) for details.
+
+## Export Use Cases
+
+### Meeting Minutes Distribution
+
+Export summaries and share with participants:
+
+1. Generate AI summary
+2. Review and edit in Meetily
+3. Export as markdown
+4. Share via email or team chat
+5. Upload to project management tool
+
+### Compliance and Archival
+
+Preserve meeting records:
+
+- Export transcripts and summaries regularly
+- Store in compliance-approved repository
+- Maintain audit trail of meeting decisions
+- Satisfy regulatory retention requirements
+
+### Knowledge Base Building
+
+Build searchable meeting library:
+
+- Export all meetings to markdown
+- Store in Git repository
+- Use tools like Obsidian or Logseq for navigation
+- Link related meetings and decisions
+
+### Client Deliverables
+
+Professional meeting documentation:
+
+- Export as PDF (PRO) with branding
+- Include action items and decisions
+- Send as client-facing deliverable
+- Attach to project invoices
+
+## Privacy Considerations
+
+### Sensitive Information
+
+Before exporting, review content for:
+
+- **API keys or credentials**: Remove before sharing
+- **Personal information**: Check GDPR/privacy compliance
+- **Internal-only details**: Redact when sharing externally
+- **Confidential discussions**: Consider separate exports for different audiences
+
+### Secure Sharing
+
+When sharing exports:
+
+- Use encrypted channels (email with PGP, secure file sharing)
+- Set expiration dates on shared links
+- Restrict access to authorized recipients
+- Consider password-protecting PDF exports (PRO)
+
+## Troubleshooting
+
+### Export Button Not Visible
+
+**Issue**: Can't find export option
+
+**Solutions**:
+- Ensure summary has been generated (export not available for empty summaries)
+- Look for download icon in summary toolbar
+- Check keyboard shortcut: Cmd+E (macOS) or Ctrl+E (Windows)
+
+### Export File Empty or Corrupted
+
+**Issue**: Downloaded file has no content
+
+**Solutions**:
+- Try exporting again (may be transient issue)
+- Check disk space available
+- Verify summary renders correctly in app before exporting
+- Restart Meetily and try again
+
+### Formatting Lost in Export
+
+**Issue**: Tables or lists not rendering correctly
+
+**Solutions**:
+- Open exported markdown in compatible viewer (VS Code, Typora, Obsidian)
+- Verify your markdown viewer supports tables
+- For complex formatting, consider PRO's PDF export
+
+### Large File Size
+
+**Issue**: Exported JSON transcripts are very large
+
+**Solutions**:
+- Long meetings generate large transcripts (expected)
+- Compress with zip/gzip for storage or sharing
+- Consider exporting summary only (smaller file)
+- For archival, store JSON in recordings folder, share markdown summaries
+
+## Roadmap
+
+### Planned Export Features
+
+**Community Edition**:
+- Plain text export (.txt) with optional timestamps
+- CSV export for action items and decisions
+- Custom export templates
+- Batch export multiple meetings
+
+**PRO**:
+- Advanced PDF customization (fonts, colors, layout)
+- Excel export with structured data
+- Email integration (send exports directly)
+- Cloud storage sync (Dropbox, Google Drive)
+- Automated export on meeting completion
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Custom Templates" icon="file-lines" href="/features/custom-templates">
+    Structure summaries for optimal export formatting
+  </Card>
+  <Card title="AI Summaries" icon="sparkles" href="/features/ai-summaries">
+    Generate summaries to export
+  </Card>
+  <Card title="Import & Enhance" icon="upload" href="/features/import-enhance">
+    Import and transcribe external audio files
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Access meeting data programmatically
+  </Card>
+</CardGroup>
+
+## Learn More
+
+- [Meetily PRO Features](https://meetily.ai/pro/)
+- [File Storage Locations](/configuration/data-storage)
+- [Privacy & Data Sovereignty](/configuration/privacy)

@@ -1,0 +1,293 @@
+---
+title: Whisper Models
+description: Configure and optimize Whisper transcription models for accuracy and performance
+---
+
+## Overview
+
+Meetily uses OpenAI's Whisper model for speech-to-text transcription. Whisper provides state-of-the-art accuracy with multiple model sizes to balance quality and speed based on your hardware capabilities.
+
+<Note>
+All Whisper models run **entirely on your local machine** with no cloud dependency. Your audio never leaves your device.
+</Note>
+
+## Available Models
+
+Whisper models come in two variants:
+- **Standard (f16)**: Full precision models with maximum accuracy
+- **Quantized (Q5_0/Q5_1)**: Compressed models that are 50-65% smaller with minimal accuracy loss
+
+### Standard Models
+
+| Model | Size | Accuracy | Speed | Best For |
+|-------|------|----------|-------|----------|
+| `tiny` | 74 MB | Decent | Very Fast | Testing, low-end hardware |
+| `base` | 142 MB | Good | Fast | Quick transcriptions, resource-constrained systems |
+| `small` | 466 MB | Good | Medium | Balanced performance for most use cases |
+| `medium` | 1.5 GB | High | Slow | Professional transcriptions |
+| `large-v3-turbo` | 1.5 GB | High | Medium | **Recommended** - Best balance of speed and accuracy |
+| `large-v3` | 3 GB | Highest | Slow | Maximum accuracy for critical meetings |
+
+### Quantized Models (Faster)
+
+Quantized models use 5-bit compression to reduce size and improve speed with less than 3% accuracy loss.
+
+| Model | Size | Accuracy | Speed | Notes |
+|-------|------|----------|-------|---------|
+| `tiny-q5_1` | 31 MB | Decent | Very Fast | ~50% faster than standard tiny |
+| `base-q5_1` | 57 MB | Good | Fast | Ideal for real-time use |
+| `small-q5_1` | 181 MB | Good | Fast | Good balance for most users |
+| `medium-q5_0` | 514 MB | High | Medium | Professional quality, faster processing |
+| `large-v3-turbo-q5_0` | 547 MB | High | Medium | Best quantized model |
+| `large-v3-q5_0` | 1 GB | High | Medium | Maximum accuracy in quantized form |
+
+<Note>
+The default model is `large-v3-turbo` which provides the best accuracy-to-speed ratio for most users.
+</Note>
+
+## Model Selection Guide
+
+### By Hardware Capability
+
+**Entry-Level (4GB RAM, no GPU)**
+- Start with `base` or `base-q5_1`
+- Process speed: ~3-5x real-time
+- Good for 30-60 minute meetings
+
+**Mid-Range (8GB RAM, integrated GPU)**
+- Use `small` or `small-q5_1`
+- Process speed: ~2-3x real-time
+- Handles 1-2 hour meetings comfortably
+
+**High-End (16GB+ RAM, dedicated GPU)**
+- Use `large-v3-turbo` or `large-v3-turbo-q5_0`
+- Process speed: ~1-2x real-time with GPU
+- Ideal for multi-hour meetings
+
+**Professional Workstation**
+- Use `large-v3` for maximum accuracy
+- Process speed: ~0.5-1x real-time with high-end GPU
+- Best for legal, medical, or critical transcriptions
+
+### By Use Case
+
+<AccordionGroup>
+  <Accordion title="Quick Meeting Notes">
+    **Recommended**: `base-q5_1` or `small-q5_1`
+    
+    Fast processing for casual meetings where perfect accuracy isn't critical. Transcribes a 30-minute meeting in 5-10 minutes.
+  </Accordion>
+
+  <Accordion title="Professional Documentation">
+    **Recommended**: `large-v3-turbo` or `medium`
+    
+    High accuracy for business meetings, interviews, and presentations. Worth the extra processing time for quality transcripts.
+  </Accordion>
+
+  <Accordion title="Legal/Medical Transcription">
+    **Recommended**: `large-v3`
+    
+    Maximum accuracy for compliance-critical scenarios. Processes slower but delivers the most accurate transcripts.
+  </Accordion>
+
+  <Accordion title="Real-Time Processing">
+    **Recommended**: `base` or `small` with GPU acceleration
+    
+    For near-real-time transcription during meetings. Requires dedicated GPU for best performance.
+  </Accordion>
+</AccordionGroup>
+
+## Performance Characteristics
+
+### Accuracy Comparison
+
+Based on OpenAI's Word Error Rate (WER) benchmarks:
+
+```
+tiny:    ~15% WER  (85% accuracy)
+base:    ~10% WER  (90% accuracy)
+small:   ~6% WER   (94% accuracy)
+medium:  ~4% WER   (96% accuracy)
+large-v3: ~3% WER  (97% accuracy)
+```
+
+<Note>
+Quantized models (Q5_0/Q5_1) maintain >95% of the original accuracy while being 50-65% smaller.
+</Note>
+
+### Speed Benchmarks
+
+Processing time for a 30-minute meeting (approximate):
+
+**With GPU Acceleration** (Apple Silicon M1/M2, NVIDIA RTX 3060+):
+- `tiny`: 2-3 minutes
+- `base`: 3-5 minutes
+- `small`: 5-8 minutes
+- `medium`: 10-15 minutes
+- `large-v3-turbo`: 12-18 minutes
+- `large-v3`: 20-30 minutes
+
+**CPU Only** (Modern 8-core processor):
+- `tiny`: 8-12 minutes
+- `base`: 15-20 minutes
+- `small`: 30-45 minutes
+- `medium`: 60-90 minutes
+- `large-v3-turbo`: 90-120 minutes
+- `large-v3`: 150-180 minutes
+
+<Warning>
+Without GPU acceleration, processing time increases significantly (5-10x slower). We strongly recommend using GPU acceleration for models larger than `small`.
+</Warning>
+
+## Downloading Models
+
+Models are downloaded automatically when first selected:
+
+1. Go to **Settings** > **Transcription**
+2. Select desired model from dropdown
+3. Click **Download Model** if not already available
+4. Wait for download to complete (progress bar shown)
+5. Click **Load Model** to activate
+
+### Download Requirements
+
+- **Internet connection** required (one-time)
+- **Storage space**: See model sizes above
+- **Download source**: HuggingFace (official Whisper.cpp repository)
+
+<Note>
+Downloaded models are stored permanently on your machine:
+- **macOS**: `~/Library/Application Support/Meetily/models/`
+- **Windows**: `%APPDATA%\Meetily\models\`
+- **Linux**: `~/.local/share/Meetily/models/`
+</Note>
+
+## Language Support
+
+Whisper supports **99 languages** with automatic detection:
+
+### Automatic Language Detection
+
+By default, Whisper automatically detects the spoken language:
+
+```rust
+// Automatic detection (default)
+transcribe_audio(audio_data, None)
+
+// Explicit language
+transcribe_audio(audio_data, Some("en"))
+```
+
+### Supported Languages (Partial List)
+
+- English (`en`)
+- Spanish (`es`)
+- French (`fr`)
+- German (`de`)
+- Italian (`it`)
+- Portuguese (`pt`)
+- Russian (`ru`)
+- Japanese (`ja`)
+- Chinese (`zh`)
+- Korean (`ko`)
+- And 89 more...
+
+<Note>
+Larger models (medium, large-v3) provide significantly better accuracy for non-English languages.
+</Note>
+
+### Translation to English
+
+Whisper can automatically translate any language to English:
+
+```rust
+// Transcribe and translate to English
+transcribe_audio(audio_data, Some("auto-translate"))
+```
+
+Useful for multilingual meetings or international content.
+
+## Model Configuration
+
+### Adaptive Parameters
+
+Meetily automatically adjusts Whisper parameters based on your hardware:
+
+| Hardware Tier | Beam Size | Threads | Chunk Size |
+|---------------|-----------|---------|------------|
+| Ultra (High-end GPU + 16GB RAM) | 5 | 8 | 25s |
+| High (GPU + 8GB RAM) | 3 | 6 | 20s |
+| Medium (CPU or basic GPU) | 2 | 4 | 15s |
+| Low (CPU only) | 1 | 2 | 10s |
+
+<Note>
+On Windows, beam size is locked to 2 for stability across hardware configurations.
+</Note>
+
+### Advanced Parameters
+
+These parameters are automatically optimized but can be customized:
+
+**Beam Size**
+- Controls decoding quality vs speed
+- Range: 1-5 (higher = better quality, slower)
+- Default: Adaptive (1-5 based on hardware)
+
+**Temperature**
+- Controls sampling randomness
+- Range: 0.0-1.0 (lower = more deterministic)
+- Default: 0.1-0.4 (adaptive)
+
+**No Speech Threshold**
+- Filters silent segments
+- Default: 0.55 (balanced)
+- Lower values detect quieter speech
+
+## Model File Format
+
+Whisper models use GGML format (quantized model format):
+
+- **File extension**: `.bin`
+- **Format**: GGML/GGUF (optimized for CPU/GPU)
+- **Validation**: Automatic on load (checks magic number)
+- **Corruption detection**: File size and header validation
+
+<Warning>
+If a model file becomes corrupted, delete it from the models directory and re-download. Meetily will detect corruption automatically and prompt for re-download.
+</Warning>
+
+## Troubleshooting
+
+### Model Won't Load
+
+1. **Check available disk space** - Ensure enough space for model size
+2. **Verify download completed** - Check model status in Settings
+3. **Check file integrity** - Meetily validates GGML header automatically
+4. **Review logs** - Check for "Failed to load model" errors
+
+### Slow Transcription
+
+1. **Enable GPU acceleration** - See [GPU Acceleration](/configuration/gpu-acceleration)
+2. **Use smaller model** - Try quantized version (Q5_0/Q5_1)
+3. **Reduce beam size** - Lower beam size speeds up processing
+4. **Close other apps** - Free up system resources
+
+### Inaccurate Transcriptions
+
+1. **Use larger model** - Upgrade to `medium` or `large-v3-turbo`
+2. **Improve audio quality** - Check microphone settings
+3. **Reduce background noise** - Use noise suppression
+4. **Set language explicitly** - For non-English content
+
+### Out of Memory Errors
+
+1. **Use quantized model** - Q5_0/Q5_1 versions use less RAM
+2. **Use smaller model** - Drop to `small` or `base`
+3. **Close other applications** - Free up system memory
+4. **Disable GPU** - Use CPU mode if GPU memory limited
+
+## See Also
+
+- [Parakeet Models](/configuration/parakeet-models) - Alternative fast transcription engine
+- [GPU Acceleration](/configuration/gpu-acceleration) - Enable GPU support for faster processing
+- [Audio Settings](/configuration/audio-devices) - Configure microphone and system audio

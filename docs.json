@@ -1,122 +1,168 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Meetily",
+  "theme": "almond",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#773cc7",
+    "light": "#b7a6d9",
+    "dark": "#e1ccdd"
   },
-  "favicon": "/favicon.svg",
+
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Zackriya-Solutions/meetily"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Zackriya-Solutions/meetily",
+      "linkedin": "https://www.linkedin.com/company/106363062/",
+      "discord": "https://discord.gg/crRymMQBFH"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Get Started",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Overview",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "why-meetily"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Installation",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "installation/macos",
+              "installation/windows",
+              "installation/linux"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Quick Start",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "quickstart/first-recording",
+              "quickstart/audio-setup",
+              "quickstart/ai-setup"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Features",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core Features",
             "pages": [
-              "api-reference/introduction"
+              "features/recording",
+              "features/transcription",
+              "features/ai-summaries",
+              "features/meeting-management"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Advanced Features",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "features/speaker-diarization",
+              "features/import-enhance",
+              "features/custom-templates",
+              "features/export-options"
+            ]
+          },
+          {
+            "group": "AI Providers",
+            "pages": [
+              "ai-providers/ollama",
+              "ai-providers/claude",
+              "ai-providers/openai",
+              "ai-providers/custom-endpoint"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Configuration",
+        "groups": [
+          {
+            "group": "Audio Settings",
+            "pages": [
+              "configuration/audio-devices",
+              "configuration/audio-mixing",
+              "configuration/system-audio"
+            ]
+          },
+          {
+            "group": "Transcription Models",
+            "pages": [
+              "configuration/whisper-models",
+              "configuration/parakeet-models",
+              "configuration/gpu-acceleration"
+            ]
+          },
+          {
+            "group": "Privacy & Security",
+            "pages": [
+              "configuration/privacy",
+              "configuration/local-processing",
+              "configuration/data-storage"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Advanced",
+        "groups": [
+          {
+            "group": "Development",
+            "pages": [
+              "advanced/building-from-source",
+              "advanced/architecture",
+              "advanced/contributing"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "advanced/backend-setup",
+              "advanced/docker-deployment",
+              "advanced/database-management"
+            ]
+          },
+          {
+            "group": "Platform Specific",
+            "pages": [
+              "advanced/macos-development",
+              "advanced/windows-development",
+              "advanced/linux-development"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Backend API",
+            "pages": [
+              "api/overview",
+              "api/meetings",
+              "api/transcripts",
+              "api/summaries"
+            ]
+          },
+          {
+            "group": "Tauri Commands",
+            "pages": [
+              "api/tauri/recording",
+              "api/tauri/audio",
+              "api/tauri/transcription"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

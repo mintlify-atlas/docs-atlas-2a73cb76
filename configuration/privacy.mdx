@@ -1,0 +1,193 @@
+---
+title: Privacy Guarantees
+description: Learn about Meetily's privacy-first architecture and data handling practices
+---
+
+## Privacy-First by Design
+
+Meetily is built from the ground up with a **privacy-first philosophy**. Unlike cloud-based meeting assistants that transmit your sensitive conversations to external servers, Meetily processes everything locally on your device.
+
+## Core Privacy Principles
+
+### 1. Local-First Processing
+
+All meeting data processing happens entirely on your infrastructure:
+
+- **Audio Transcription**: Speech-to-text conversion uses local Whisper or Parakeet models running on your device
+- **Audio Recordings**: Never transmitted to external servers
+- **Meeting Content**: Remains on your local storage
+- **AI Summaries**: Generated locally via Ollama or through your chosen LLM provider with explicit consent
+
+**Location in code**: 
+- Whisper processing: `frontend/src-tauri/src/whisper_engine/whisper_engine.rs`
+- Audio pipeline: `frontend/src-tauri/src/audio/pipeline.rs`
+
+### 2. Complete Data Ownership
+
+You maintain full ownership and control over all meeting data:
+
+- **Local Storage**: All data stored on your device
+- **No Vendor Lock-In**: Export your data in standard formats at any time
+- **Full Control**: Delete, modify, or archive data as needed
+- **No External Dependencies**: Core functionality works entirely offline
+
+### 3. Zero Meeting Content Collection
+
+Meetily **never** collects or transmits:
+
+- Meeting audio or recordings
+- Transcript content
+- Meeting titles or metadata
+- Participant names or information
+- File names or folder structures
+- AI-generated summaries or content
+- LLM conversations or prompts
+
+## Optional Analytics
+
+Meetily collects minimal, anonymized usage analytics **only if you choose to enable it** during onboarding. This helps improve the product while maintaining your privacy.
+
+### What We Collect (When Enabled)
+
+**Application Usage Metrics**:
+- Feature usage patterns (which buttons you click)
+- Session duration and frequency
+- Performance metrics (transcription success rates, error frequencies)
+- UI interaction patterns
+
+**Technical Diagnostics**:
+- Application version and platform (macOS, Windows, Linux)
+- Error logs and crash reports (anonymized)
+- Performance benchmarks (processing times, resource usage)
+
+**Implementation**: Analytics use PostHog with anonymized user IDs only. See `frontend/src/lib/analytics.ts` for full implementation details.
+
+### What We Never Collect
+
+- Meeting content, transcripts, or recordings
+- Personal information or identifiable data
+- File names, meeting titles, or metadata
+- Audio data or voice patterns
+- Participant names or contact information
+- LLM conversations or AI-generated content
+
+### Analytics Implementation Details
+
+- **Provider**: PostHog (privacy-focused analytics platform)
+- **Anonymization**: All data linked to generated user IDs only
+- **Data Retention**: 12 months maximum, then automatically deleted
+- **Encryption**: All data encrypted in transit using TLS
+- **Open Source**: Full implementation visible in source code
+- **User Control**: Can be disabled at any time in settings
+
+**Code Reference**: `frontend/src/lib/analytics.ts:1-836`
+
+## Third-Party Services
+
+### LLM Providers (Optional)
+
+If you choose to use external LLM providers for summaries:
+
+- **Anthropic Claude**: Subject to [Anthropic's privacy policy](https://www.anthropic.com/privacy)
+- **Groq**: Subject to [Groq's privacy policy](https://groq.com/privacy-policy/)
+- **OpenRouter**: Subject to [OpenRouter's privacy policy](https://openrouter.ai/privacy)
+- **Local Ollama**: Processed entirely on your device (recommended for maximum privacy)
+
+**You explicitly choose** whether to send transcript data to these services. The choice is made in the UI when generating summaries, and you can change providers at any time.
+
+## Open Source Transparency
+
+As an MIT-licensed open-source project, you can:
+
+- **Review**: Examine all privacy implementations in the source code
+- **Audit**: Verify that no hidden data collection exists
+- **Modify**: Customize data handling to meet your requirements
+- **Deploy**: Run entirely on your own infrastructure
+- **Contribute**: Help improve privacy features
+
+**GitHub Repository**: [Zackriya-Solutions/meeting-minutes](https://github.com/Zackriya-Solutions/meeting-minutes)
+
+## Privacy Rights
+
+### Data Access
+
+All your data is stored locally and fully accessible:
+
+- **Meeting Database**: SQLite database at standard application data directory
+- **Audio Files**: WAV/MP3 format in meeting folders
+- **Transcripts**: JSON format with timestamps
+- **Metadata**: Human-readable JSON files
+
+See [Data Storage](/configuration/data-storage) for detailed locations.
+
+### Data Export
+
+Export your data in standard formats:
+
+- **Transcripts**: Plain text, JSON, or formatted documents
+- **Audio**: Standard WAV/MP3 files
+- **Summaries**: Markdown or plain text
+- **Database**: Standard SQLite format
+
+### Data Deletion
+
+Delete meetings and data:
+
+- **Individual Meetings**: Delete from the UI (removes database entries and files)
+- **Bulk Deletion**: Delete multiple meetings at once
+- **Complete Removal**: Uninstalling the app removes all data from standard locations
+
+## Security Practices
+
+### Local Security
+
+- **File System Protection**: Standard OS permissions protect your data
+- **No External Transmission**: Sensitive data never leaves your device (except explicit LLM choices)
+- **Secure Storage**: Data stored in OS-protected application directories
+
+### Platform-Specific Data Locations
+
+**macOS**:
+- Application Data: `~/Library/Application Support/Meetily/`
+- Database: `~/Library/Application Support/Meetily/meeting_minutes.sqlite`
+- Recordings: `~/Downloads/` (default, configurable)
+
+**Windows**:
+- Application Data: `%APPDATA%\Meetily\`
+- Database: `%APPDATA%\Meetily\meeting_minutes.sqlite`
+- Recordings: `%USERPROFILE%\Downloads\` (default, configurable)
+
+**Linux**:
+- Application Data: `~/.local/share/Meetily/`
+- Database: `~/.local/share/Meetily/meeting_minutes.sqlite`
+- Recordings: `~/Downloads/` (default, configurable)
+
+## Compliance Considerations
+
+While Meetily is designed for privacy, users are responsible for:
+
+- **Recording Consent**: Obtaining consent from meeting participants before recording
+- **Data Protection**: Ensuring compliance with local data protection laws (GDPR, CCPA, etc.)
+- **Access Control**: Protecting their device and data with appropriate security measures
+
+## Privacy Policy Updates
+
+We notify users of privacy policy changes through:
+
+- Updates to `PRIVACY_POLICY.md` in the GitHub repository
+- Release notes for application updates
+- In-app notifications for significant privacy changes
+
+## Questions or Concerns
+
+For privacy-related questions:
+
+- **GitHub Issues**: [Create an issue](https://github.com/Zackriya-Solutions/meeting-minutes/issues)
+- **Email**: [Contact form](https://www.zackriya.com/service-interest-form/)
+- **Community**: [Discord](https://discord.gg/crRymMQBFH)
+
+## Related Documentation
+
+- [Local Processing Architecture](/configuration/local-processing)
+- [Data Storage Locations](/configuration/data-storage)
+- [Security Best Practices](/configuration/privacy)
