@@ -1,0 +1,175 @@
+{
+  "projectType": "saas",
+  "projectName": "Meetily",
+  "projectDescription": "Privacy-first AI meeting assistant with local transcription, speaker diarization, and AI-powered summaries.",
+  "theme": "almond",
+  "primaryColor": "#773cc7",
+  "lightColor": "#b7a6d9",
+  "darkColor": "#e1ccdd",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get Started",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction",
+              "why-meetily"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/macos",
+              "installation/windows",
+              "installation/linux"
+            ]
+          },
+          {
+            "group": "Quick Start",
+            "pages": [
+              "quickstart/first-recording",
+              "quickstart/audio-setup",
+              "quickstart/ai-setup"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Features",
+        "groups": [
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/recording",
+              "features/transcription",
+              "features/ai-summaries",
+              "features/meeting-management"
+            ]
+          },
+          {
+            "group": "Advanced Features",
+            "pages": [
+              "features/speaker-diarization",
+              "features/import-enhance",
+              "features/custom-templates",
+              "features/export-options"
+            ]
+          },
+          {
+            "group": "AI Providers",
+            "pages": [
+              "ai-providers/ollama",
+              "ai-providers/claude",
+              "ai-providers/openai",
+              "ai-providers/custom-endpoint"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Configuration",
+        "groups": [
+          {
+            "group": "Audio Settings",
+            "pages": [
+              "configuration/audio-devices",
+              "configuration/audio-mixing",
+              "configuration/system-audio"
+            ]
+          },
+          {
+            "group": "Transcription Models",
+            "pages": [
+              "configuration/whisper-models",
+              "configuration/parakeet-models",
+              "configuration/gpu-acceleration"
+            ]
+          },
+          {
+            "group": "Privacy & Security",
+            "pages": [
+              "configuration/privacy",
+              "configuration/local-processing",
+              "configuration/data-storage"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Advanced",
+        "groups": [
+          {
+            "group": "Development",
+            "pages": [
+              "advanced/building-from-source",
+              "advanced/architecture",
+              "advanced/contributing"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "advanced/backend-setup",
+              "advanced/docker-deployment",
+              "advanced/database-management"
+            ]
+          },
+          {
+            "group": "Platform Specific",
+            "pages": [
+              "advanced/macos-development",
+              "advanced/windows-development",
+              "advanced/linux-development"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Backend API",
+            "pages": [
+              "api/overview",
+              "api/meetings",
+              "api/transcripts",
+              "api/summaries"
+            ]
+          },
+          {
+            "group": "Tauri Commands",
+            "pages": [
+              "api/tauri/recording",
+              "api/tauri/audio",
+              "api/tauri/transcription"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Local-first transcription with Whisper and Parakeet models",
+    "Real-time live transcription with speaker diarization",
+    "AI-powered meeting summaries via Ollama, Claude, or custom endpoints",
+    "Professional audio mixing with ducking and clipping prevention",
+    "GPU acceleration (Metal, CUDA, Vulkan) for fast transcription",
+    "Import and enhance existing audio files",
+    "Multi-platform support (macOS, Windows, Linux)",
+    "100% privacy-focused with local data processing"
+  ],
+  "publicApiSurface": [
+    "POST /api/meetings - Create new meeting",
+    "GET /api/meetings - List all meetings",
+    "GET /api/meetings/{id} - Get meeting details",
+    "POST /api/transcripts - Save transcript",
+    "POST /api/summaries - Generate AI summary",
+    "start_recording - Begin audio capture and transcription",
+    "stop_recording - End recording session",
+    "list_audio_devices - Enumerate available audio devices",
+    "load_whisper_model - Load transcription model",
+    "generate_summary - Create AI summary with LLM"
+  ]
+}
